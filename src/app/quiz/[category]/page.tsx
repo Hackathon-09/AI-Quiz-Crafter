@@ -2,15 +2,16 @@
 'use client'
 
 import { Container, Heading, VStack, Text } from '@chakra-ui/react'
+import { use } from 'react'
 
 type Props = {
-  params: {
+  params: Promise<{
     category: string
-  }
+  }>
 }
 
 export default function QuizCategoryPage({ params }: Props) {
-  const { category } = params
+  const { category } = use(params)
 
   return (
     <Container>
