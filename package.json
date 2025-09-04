@@ -14,9 +14,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.12.0",
     "@chakra-ui/react": "^3.26.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "aws-amplify": "^6.15.5",
     "axios": "^1.11.0",
     "framer-motion": "^12.23.12",
     "next": "15.5.2",

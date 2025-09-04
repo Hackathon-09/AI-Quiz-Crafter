@@ -1,5 +1,6 @@
 'use client'
 
+import '@/lib/amplify' 
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
