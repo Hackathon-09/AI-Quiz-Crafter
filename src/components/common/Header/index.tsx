@@ -3,30 +3,40 @@
 import { Flex, Heading, HStack, IconButton, Text } from '@chakra-ui/react'
 import { IoSettings } from 'react-icons/io5'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'aws-amplify/auth'
 
 export default function Header() {
   const router = useRouter()
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.push('/auth')
+    } catch (error) {
+      console.error('error signing out: ', error)
+    }
+  }
+
   return (
-    <Flex 
-      as="header" 
-      w="full" 
-      h="60px" 
-      bg="white" 
-      borderBottomWidth="1px" 
-      px={6} 
-      align="center" 
+    <Flex
+      as="header"
+      w="full"
+      h="60px"
+      bg="white"
+      borderBottomWidth="1px"
+      px={6}
+      align="center"
       justify="space-between"
       shadow="sm"
     >
-      <Heading 
-        size="md" 
+      <Heading
+        size="md"
         cursor="pointer"
         onClick={() => router.push('/dashboard')}
       >
         AI Quiz Crafter
       </Heading>
-      
+
       <HStack gap={4}>
         <IconButton
           aria-label="設定"
@@ -35,7 +45,7 @@ export default function Header() {
         >
           <IoSettings />
         </IconButton>
-        <Text fontSize="sm" cursor="pointer">
+        <Text fontSize="sm" cursor="pointer" onClick={handleSignOut}>
           ログアウト
         </Text>
       </HStack>
