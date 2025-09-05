@@ -1,4 +1,5 @@
-// src/types/index.ts
+export * from './quiz'
+
 export interface User {
   id: string
   email: string
@@ -11,18 +12,4 @@ export interface Note {
   title: string
   content: string
   createdAt: string
-}
-
-export interface Quiz {
-  id: string
-  noteId: string
-  questions: Question[]
-}
-
-export interface Question {
-  id: string
-  question: string
-  choices?: string[]
-  answer: string
-  explanation: string
 }
