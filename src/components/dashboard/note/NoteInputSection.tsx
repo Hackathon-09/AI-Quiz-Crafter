@@ -17,26 +17,34 @@ type InputMethod = 'text' | 'file' | 'notion'
 
 export default function NoteInputSection() {
   const [inputMethod, setInputMethod] = useState<InputMethod>('text')
+  const [title, setTitle] = useState('')
+  const [tags, setTags] = useState('')
   const [textContent, setTextContent] = useState('')
   const [notionUrl, setNotionUrl] = useState('')
 
   const handleTextSave = () => {
     if (!textContent.trim()) return
     // TODO: 実際の保存処理を実装
-    console.log('Save text note:', { content: textContent })
+    console.log('Save text note:', { title, tags, content: textContent })
+    setTitle('')
+    setTags('')
     setTextContent('')
   }
 
   const handleFileUpload = (files: File[]) => {
     if (!files?.length) return
     // TODO: ファイル処理を実装
-    console.log('Upload files:', files.map((f) => f.name))
+    console.log('Upload files:', { title, tags, files: files.map((f) => f.name) })
+    setTitle('')
+    setTags('')
   }
 
   const handleNotionImport = () => {
     if (!notionUrl.trim()) return
     // TODO: Notion連携を実装
-    console.log('Import from Notion:', notionUrl)
+    console.log('Import from Notion:', { title, tags, notionUrl })
+    setTitle('')
+    setTags('')
     setNotionUrl('')
   }
 
@@ -76,6 +84,18 @@ export default function NoteInputSection() {
 
           <Tabs.Content value="text">
             <VStack gap={3} align="stretch">
+              <Input
+                placeholder="タイトルを入力してください"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                size="md"
+              />
+              <Input
+                placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                size="md"
+              />
               <Textarea
                 placeholder="ノート内容を入力してください"
                 value={textContent}
@@ -97,6 +117,18 @@ export default function NoteInputSection() {
 
           <Tabs.Content value="file">
             <VStack gap={3} align="stretch">
+              <Input
+                placeholder="タイトルを入力してください"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                size="md"
+              />
+              <Input
+                placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                size="md"
+              />
               <FileUpload.Root
                 accept="image/*,.pdf,.txt,.docx"
                 onFileChange={(e) => handleFileUpload(e.acceptedFiles)}
@@ -123,6 +155,18 @@ export default function NoteInputSection() {
 
           <Tabs.Content value="notion">
             <VStack gap={3} align="stretch">
+              <Input
+                placeholder="タイトルを入力してください"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                size="md"
+              />
+              <Input
+                placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                size="md"
+              />
               <Input
                 placeholder="NotionページのURLを入力"
                 value={notionUrl}
