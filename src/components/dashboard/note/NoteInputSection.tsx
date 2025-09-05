@@ -12,6 +12,7 @@ import {
 } from '@chakra-ui/react'
 import { useState } from 'react'
 import { FaEdit, FaUpload, FaLink } from 'react-icons/fa'
+import { fetchAuthSession } from 'aws-amplify/auth'
 
 type InputMethod = 'text' | 'file' | 'notion'
 
@@ -21,31 +22,157 @@ export default function NoteInputSection() {
   const [tags, setTags] = useState('')
   const [textContent, setTextContent] = useState('')
   const [notionUrl, setNotionUrl] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleTextSave = () => {
-    if (!textContent.trim()) return
-    // TODO: 実際の保存処理を実装
-    console.log('Save text note:', { title, tags, content: textContent })
-    setTitle('')
-    setTags('')
-    setTextContent('')
+  const API_BASE_URL = 'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1'
+
+  const getAuthHeaders = async () => {
+    try {
+      const session = await fetchAuthSession()
+      const token = session.tokens?.idToken?.toString()
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    } catch (error) {
+      console.error('Failed to get auth token:', error)
+      return {
+        'Content-Type': 'application/json',
+      }
+    }
   }
 
-  const handleFileUpload = (files: File[]) => {
-    if (!files?.length) return
-    // TODO: ファイル処理を実装
-    console.log('Upload files:', { title, tags, files: files.map((f) => f.name) })
-    setTitle('')
-    setTags('')
+  const sendNoteToAPI = async (noteData: any) => {
+    try {
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_BASE_URL}/notes`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(noteData),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      console.log('Note saved successfully:', result)
+      return result
+    } catch (error) {
+      console.error('Failed to save note:', error)
+      throw error
+    }
   }
 
-  const handleNotionImport = () => {
-    if (!notionUrl.trim()) return
-    // TODO: Notion連携を実装
-    console.log('Import from Notion:', { title, tags, notionUrl })
-    setTitle('')
-    setTags('')
-    setNotionUrl('')
+  const handleTextSave = async () => {
+    if (!textContent.trim() || isSubmitting) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      const noteData = {
+        sourceType: 'text',
+        title: title || '無題のノート',
+        content: textContent,
+        tags: tags
+      }
+      
+      await sendNoteToAPI(noteData)
+      
+      setTitle('')
+      setTags('')
+      setTextContent('')
+    } catch (error) {
+      console.error('Failed to save text note:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleFileUpload = async (files: File[]) => {
+    if (!files?.length || isSubmitting) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      const file = files[0]
+      
+      // Step 1: 署名付きURLを取得
+      const headers = await getAuthHeaders()
+      const urlResponse = await fetch(`${API_BASE_URL}/upload-url`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type
+        }),
+      })
+      
+      if (!urlResponse.ok) {
+        throw new Error('Failed to get upload URL')
+      }
+      
+      const { uploadUrl, s3Key, fileId } = await urlResponse.json()
+      
+      // Step 2: S3に直接ファイルをアップロード
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      })
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file to S3')
+      }
+      
+      // Step 3: ノート情報をデータベースに保存
+      const noteData = {
+        sourceType: 'file',
+        title: title || file.name,
+        fileName: file.name,
+        s3Key: s3Key,
+        noteId: fileId,
+        contentType: file.type,
+        fileSize: file.size,
+        tags: tags
+      }
+      
+      await sendNoteToAPI(noteData)
+      
+      setTitle('')
+      setTags('')
+    } catch (error) {
+      console.error('Failed to upload file:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleNotionImport = async () => {
+    if (!notionUrl.trim() || isSubmitting) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      const noteData = {
+        sourceType: 'notion',
+        title: title || '無題のNotion',
+        notionUrl: notionUrl,
+        tags: tags
+      }
+      
+      await sendNoteToAPI(noteData)
+      
+      setTitle('')
+      setTags('')
+      setNotionUrl('')
+    } catch (error) {
+      console.error('Failed to import from Notion:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -107,7 +234,9 @@ export default function NoteInputSection() {
               <Button
                 colorScheme="purple"
                 onClick={handleTextSave}
-                disabled={!textContent.trim()}
+                disabled={!textContent.trim() || isSubmitting}
+                isLoading={isSubmitting}
+                loadingText="保存中..."
                 w="full"
               >
                 ノートを保存
@@ -176,7 +305,9 @@ export default function NoteInputSection() {
               <Button
                 colorScheme="purple"
                 onClick={handleNotionImport}
-                disabled={!notionUrl.trim()}
+                disabled={!notionUrl.trim() || isSubmitting}
+                isLoading={isSubmitting}
+                loadingText="取得中..."
                 w="full"
               >
                 Notionから取得
