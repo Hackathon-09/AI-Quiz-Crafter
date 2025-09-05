@@ -26,13 +26,19 @@ export default function NoteInputSection() {
 
   const API_BASE_URL = 'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1'
 
-  const getAuthHeaders = async () => {
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
     try {
       const session = await fetchAuthSession()
       const token = session.tokens?.idToken?.toString()
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+      if (token) {
+        return {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        }
+      } else {
+        return {
+          'Content-Type': 'application/json',
+        }
       }
     } catch (error) {
       console.error('Failed to get auth token:', error)
@@ -42,7 +48,18 @@ export default function NoteInputSection() {
     }
   }
 
-  const sendNoteToAPI = async (noteData: any) => {
+  const sendNoteToAPI = async (noteData: {
+    sourceType: 'text' | 'file' | 'notion'
+    title: string
+    content?: string
+    notionUrl?: string
+    fileName?: string
+    s3Key?: string
+    noteId?: string
+    contentType?: string
+    fileSize?: number
+    tags: string
+  }) => {
     try {
       const headers = await getAuthHeaders()
       const response = await fetch(`${API_BASE_URL}/notes`, {
@@ -71,7 +88,7 @@ export default function NoteInputSection() {
     
     try {
       const noteData = {
-        sourceType: 'text',
+        sourceType: 'text' as const,
         title: title || '無題のノート',
         content: textContent,
         tags: tags
@@ -129,11 +146,11 @@ export default function NoteInputSection() {
       
       // Step 3: ノート情報をデータベースに保存
       const noteData = {
-        sourceType: 'file',
+        sourceType: 'file' as const,
         title: title || file.name,
         fileName: file.name,
-        s3Key: s3Key,
-        noteId: fileId,
+        s3Key: s3Key as string,
+        noteId: fileId as string,
         contentType: file.type,
         fileSize: file.size,
         tags: tags
@@ -157,7 +174,7 @@ export default function NoteInputSection() {
     
     try {
       const noteData = {
-        sourceType: 'notion',
+        sourceType: 'notion' as const,
         title: title || '無題のNotion',
         notionUrl: notionUrl,
         tags: tags
@@ -235,7 +252,7 @@ export default function NoteInputSection() {
                 colorScheme="purple"
                 onClick={handleTextSave}
                 disabled={!textContent.trim() || isSubmitting}
-                isLoading={isSubmitting}
+                loading={isSubmitting}
                 loadingText="保存中..."
                 w="full"
               >
@@ -306,7 +323,7 @@ export default function NoteInputSection() {
                 colorScheme="purple"
                 onClick={handleNotionImport}
                 disabled={!notionUrl.trim() || isSubmitting}
-                isLoading={isSubmitting}
+                loading={isSubmitting}
                 loadingText="取得中..."
                 w="full"
               >
