@@ -57,11 +57,13 @@ export const getQuestionCountNumber = (count: QuestionCount): number => {
  * @property questionCount - 質問数
  * @property questionType - 質問形式
  * @property difficulty - 難易度
+ * @property selectedNotes - 選択されたノートのID配列
  */
 export interface QuizSettings {
   questionCount: QuestionCount
   questionType: QuestionType
   difficulty: Difficulty
+  selectedNotes?: string[]
 }
 
 /**
