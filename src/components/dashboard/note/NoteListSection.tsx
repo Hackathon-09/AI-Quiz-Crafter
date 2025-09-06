@@ -8,6 +8,13 @@ import {
   Text,
   IconButton,
   Card,
+  Portal,
+  CloseButton,
+  Badge,
+  Separator,
+} from '@chakra-ui/react'
+import { 
+  Dialog
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { FaTrash, FaFileAlt, FaList } from 'react-icons/fa'
@@ -17,7 +24,6 @@ import { fetchAuthSession } from 'aws-amplify/auth'
 
 export default function NoteListSection() {
   const router = useRouter()
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -77,10 +83,6 @@ export default function NoteListSection() {
     fetchRecentNotes()
   }, [])
 
-  const handleSelectNote = (note: Note) => {
-    setSelectedNote(note)
-  }
-
   const handleDeleteNote = (noteId: string) => {
     // TODO: 実際の削除処理を実装
     console.log('Delete note:', noteId)
@@ -132,22 +134,25 @@ export default function NoteListSection() {
                 <Card.Root
                   key={note.noteId || note.id}
                   p={3}
-                  cursor="pointer"
+                  bg="blue.50"
                   transition="all 0.2s"
-                  _hover={{ bg: 'purple.50', transform: 'translateY(-1px)' }}
-                  onClick={() => handleSelectNote(note)}
-                  bg={selectedNote?.noteId === note.noteId || selectedNote?.id === note.id ? 'purple.50' : 'white'}
-                  border="1px"
-                  borderColor={
-                    selectedNote?.noteId === note.noteId || selectedNote?.id === note.id ? 'purple.200' : 'gray.200'
-                  }
+                  _hover={{ 
+                    bg: 'purple.100', 
+                    transform: 'translateY(-1px)',
+                    borderColor: 'purple.400',
+                    shadow: 'md'
+                  }}
+                  border="2px"
+                  borderColor="blue.200"
+                  borderRadius="lg"
+                  shadow="sm"
                 >
                   <HStack justify="space-between">
                     <VStack align="start" gap={1} flex={1}>
                       <Text fontSize="sm" fontWeight="medium" truncate>
                         {note.title}
                       </Text>
-                      <Text fontSize="xs" color="gray.500" lineClamp={2}>
+                      <Text fontSize="xs" color="gray.600" lineClamp={2}>
                         {(() => {
                           if (note.content === undefined || note.content === null) {
                             return 'コンテンツなし'
@@ -157,26 +162,143 @@ export default function NoteListSection() {
                             : note.content
                         })()}
                       </Text>
-                      <Text fontSize="xs" color="gray.400">
-                        {new Date(note.createdAt).toLocaleDateString()}
-                      </Text>
-                      {note.tags && note.tags.length > 0 && (
-                        <Text fontSize="xs" color="purple.500">
-                          {note.tags.slice(0, 3).join(', ')}
+                      <HStack gap={2} mt={1}>
+                        <Text fontSize="xs" color="gray.500">
+                          {new Date(note.createdAt).toLocaleDateString()}
                         </Text>
-                      )}
+                        {note.tags && note.tags.length > 0 && (
+                          <Badge size="sm" colorScheme="purple">
+                            {note.tags[0]}
+                          </Badge>
+                        )}
+                      </HStack>
                     </VStack>
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteNote(note.noteId || note.id)
-                      }}
-                    >
-                      <FaTrash size={12} />
-                    </IconButton>
+                    
+                    <VStack gap={1}>
+                      {/* ノート詳細表示ボタン */}
+                      <Dialog.Root size="lg" placement="center">
+                        <Dialog.Trigger asChild>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            colorScheme="purple"
+                          >
+                            詳細
+                          </Button>
+                        </Dialog.Trigger>
+                        <Portal>
+                          <Dialog.Backdrop />
+                          <Dialog.Positioner>
+                            <Dialog.Content>
+                              <Dialog.Header>
+                                <Dialog.Title>{note.title}</Dialog.Title>
+                                <Dialog.CloseTrigger asChild>
+                                  <CloseButton size="sm" />
+                                </Dialog.CloseTrigger>
+                              </Dialog.Header>
+                              <Dialog.Body>
+                                <VStack align="stretch" gap={4}>
+                                  {/* メタ情報 */}
+                                  <HStack gap={4} flexWrap="wrap">
+                                    <Text fontSize="sm" color="gray.600">
+                                      作成日: {new Date(note.createdAt).toLocaleDateString('ja-JP', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </Text>
+                                    {note.sourceType && (
+                                      <Badge colorScheme="blue">
+                                        {note.sourceType === 'text' ? 'テキスト' : 
+                                         note.sourceType === 'file' ? 'ファイル' : 
+                                         note.sourceType === 'notion' ? 'Notion' : note.sourceType}
+                                      </Badge>
+                                    )}
+                                  </HStack>
+
+                                  {/* タグ */}
+                                  {note.tags && note.tags.length > 0 && (
+                                    <Box>
+                                      <Text fontSize="sm" fontWeight="medium" mb={2}>タグ</Text>
+                                      <HStack gap={2} flexWrap="wrap">
+                                        {note.tags.map((tag, index) => (
+                                          <Badge key={index} colorScheme="purple">{tag}</Badge>
+                                        ))}
+                                      </HStack>
+                                    </Box>
+                                  )}
+
+                                  {/* コンテンツ */}
+                                  {note.content && (
+                                    <Box>
+                                      <Text fontSize="sm" fontWeight="medium" mb={2}>内容</Text>
+                                      <Box
+                                        p={4}
+                                        bg="gray.50"
+                                        borderRadius="md"
+                                        maxH="400px"
+                                        overflowY="auto"
+                                        border="1px"
+                                        borderColor="gray.200"
+                                      >
+                                        <Text
+                                          fontSize="sm"
+                                          lineHeight={1.6}
+                                          whiteSpace="pre-wrap"
+                                        >
+                                          {note.content}
+                                        </Text>
+                                      </Box>
+                                    </Box>
+                                  )}
+
+                                  {/* ファイル情報 */}
+                                  {note.sourceType === 'file' && note.fileName && (
+                                    <Box>
+                                      <Text fontSize="sm" fontWeight="medium" mb={2}>ファイル情報</Text>
+                                      <HStack gap={4}>
+                                        <Text fontSize="sm" color="gray.600">
+                                          ファイル名: {note.fileName}
+                                        </Text>
+                                        {note.fileSize && (
+                                          <Text fontSize="sm" color="gray.600">
+                                            サイズ: {(note.fileSize / 1024).toFixed(1)}KB
+                                          </Text>
+                                        )}
+                                      </HStack>
+                                    </Box>
+                                  )}
+
+                                  {/* Notion情報 */}
+                                  {note.sourceType === 'notion' && note.notionUrl && (
+                                    <Box>
+                                      <Text fontSize="sm" fontWeight="medium" mb={2}>Notion情報</Text>
+                                      <Text fontSize="sm" color="blue.500" wordBreak="break-all">
+                                        {note.notionUrl}
+                                      </Text>
+                                    </Box>
+                                  )}
+                                </VStack>
+                              </Dialog.Body>
+                            </Dialog.Content>
+                          </Dialog.Positioner>
+                        </Portal>
+                      </Dialog.Root>
+
+                      <IconButton
+                        size="xs"
+                        variant="ghost"
+                        colorScheme="red"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteNote(note.noteId || note.id)
+                        }}
+                      >
+                        <FaTrash size={12} />
+                      </IconButton>
+                    </VStack>
                   </HStack>
                 </Card.Root>
               ))
@@ -198,30 +320,6 @@ export default function NoteListSection() {
           </Button>
         )}
 
-        {/* 選択されたノートの詳細表示 */}
-        {selectedNote && (
-          <Box
-            mt={4}
-            p={4}
-            bg="gray.50"
-            borderRadius="md"
-            border="1px"
-            borderColor="gray.200"
-          >
-            <Text fontSize="sm" fontWeight="bold" mb={2}>
-              {selectedNote.title}
-            </Text>
-            <Text fontSize="xs" color="gray.500" mb={3}>
-              作成日: {new Date(selectedNote.createdAt).toLocaleString()}
-            </Text>
-            <Text fontSize="sm" lineHeight={1.6} whiteSpace="pre-wrap">
-              {selectedNote.content === undefined || selectedNote.content === null 
-                ? 'コンテンツがありません' 
-                : selectedNote.content
-              }
-            </Text>
-          </Box>
-        )}
       </VStack>
     </Box>
   )
