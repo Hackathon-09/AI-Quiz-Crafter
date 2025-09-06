@@ -1,14 +1,19 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getCurrentUser, type AuthUser } from 'aws-amplify/auth'
+import {
+  getCurrentUser,
+  fetchUserAttributes,
+  type AuthUser,
+  type FetchUserAttributesOutput,
+} from 'aws-amplify/auth'
 import { Hub } from 'aws-amplify/utils'
 import { Center, Spinner } from '@chakra-ui/react'
 
 interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
-  user: AuthUser | null
+  user: (AuthUser & { attributes?: FetchUserAttributesOutput }) | null
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,12 +31,14 @@ interface AuthProviderProps {
 export default function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [user, setUser] =
+    useState<(AuthUser & { attributes?: FetchUserAttributesOutput }) | null>(null)
 
   const checkAuthState = async () => {
     try {
       const currentUser = await getCurrentUser()
-      setUser(currentUser)
+      const attributes = await fetchUserAttributes()
+      setUser({ ...currentUser, attributes })
       setIsAuthenticated(true)
     } catch (error) {
       setUser(null)
