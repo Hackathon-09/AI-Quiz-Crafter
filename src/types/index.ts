@@ -18,6 +18,7 @@ export interface Note {
   sourceType?: 'text' | 'file' | 'notion'
   fileName?: string
   s3Path?: string
+  s3Key?: string  // ファイルアップロード時のS3キー
   contentType?: string
   fileSize?: number
   notionUrl?: string
