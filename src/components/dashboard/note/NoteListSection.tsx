@@ -15,9 +15,7 @@ import { Note } from '@/types'
 import { useRouter } from 'next/navigation'
 import { fetchAuthSession } from 'aws-amplify/auth'
 
-interface NoteListSectionProps {}
-
-export default function NoteListSection({}: NoteListSectionProps) {
+export default function NoteListSection() {
   const router = useRouter()
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
