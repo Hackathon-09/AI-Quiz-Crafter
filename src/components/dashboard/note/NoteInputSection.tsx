@@ -12,7 +12,7 @@ import {
   HStack,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { FaEdit, FaUpload, FaLink, FaInfoCircle } from 'react-icons/fa'
+import { FaEdit, FaUpload, FaLink, FaInfoCircle, FaTimes } from 'react-icons/fa'
 import { fetchAuthSession } from 'aws-amplify/auth'
 
 type InputMethod = 'text' | 'file' | 'notion'
@@ -23,11 +23,27 @@ export default function NoteInputSection() {
   const [tags, setTags] = useState('')
   const [textContent, setTextContent] = useState('')
   const [notionUrl, setNotionUrl] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showNotionInfo, setShowNotionInfo] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [fileUploadKey, setFileUploadKey] = useState(0)
 
   const API_BASE_URL =
     'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1'
+
+  const removeFile = (indexToRemove: number) => {
+    const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove)
+    setSelectedFiles(newFiles)
+    if (newFiles.length === 0) {
+      setFileUploadKey(prev => prev + 1) // FileUploadコンポーネントをリセット
+    }
+  }
+
+  const clearAllFiles = () => {
+    setSelectedFiles([])
+    setFileUploadKey(prev => prev + 1) // FileUploadコンポーネントをリセット
+  }
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     try {
@@ -105,6 +121,8 @@ export default function NoteInputSection() {
       setTitle('')
       setTags('')
       setTextContent('')
+      setSuccessMessage('テキストノートが正常に保存されました')
+      setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
       console.error('Failed to save text note:', error)
     } finally {
@@ -112,70 +130,77 @@ export default function NoteInputSection() {
     }
   }
 
-  const handleFileUpload = async (files: File[]) => {
-    if (!files?.length || isSubmitting) return
+  const handleFileUpload = async () => {
+    if (!selectedFiles?.length || isSubmitting) return
 
     setIsSubmitting(true)
 
     try {
-      const file = files[0]
+      const uploadPromises = selectedFiles.map(async (file) => {
+        // Step 1: 署名付きURLを取得
+        const headers = await getAuthHeaders()
+        const urlResponse = await fetch(`${API_BASE_URL}/upload-url`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type,
+          }),
+        })
 
-      // Step 1: 署名付きURLを取得
-      const headers = await getAuthHeaders()
-      const urlResponse = await fetch(`${API_BASE_URL}/upload-url`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
+        if (!urlResponse.ok) {
+          throw new Error(`Failed to get upload URL for ${file.name}`)
+        }
+
+        const { uploadUrl, s3Key, fileId } = await urlResponse.json()
+
+        // Step 2: S3に直接ファイルをアップロード
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type,
+          },
+        })
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload ${file.name} to S3`)
+        }
+
+        // Step 3: ノート情報をデータベースに保存
+        const noteData = {
+          sourceType: 'file' as const,
+          title: title || file.name,
           fileName: file.name,
+          s3Key: s3Key as string,
+          noteId: fileId as string,
           contentType: file.type,
-        }),
+          fileSize: file.size,
+          tags: tags,
+        }
+
+        console.log('Sending note data to API:', noteData)
+        console.log('Values check:', { 
+          s3Key: s3Key, 
+          fileId: fileId, 
+          hasS3Key: !!s3Key, 
+          hasFileId: !!fileId 
+        })
+
+        return await sendNoteToAPI(noteData)
       })
 
-      if (!urlResponse.ok) {
-        throw new Error('Failed to get upload URL')
-      }
+      await Promise.all(uploadPromises)
 
-      const { uploadUrl, s3Key, fileId } = await urlResponse.json()
-
-      // Step 2: S3に直接ファイルをアップロード
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      })
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file to S3')
-      }
-
-      // Step 3: ノート情報をデータベースに保存
-      const noteData = {
-        sourceType: 'file' as const,
-        title: title || file.name,
-        fileName: file.name,
-        s3Key: s3Key as string,
-        noteId: fileId as string,
-        contentType: file.type,
-        fileSize: file.size,
-        tags: tags,
-      }
-
-      console.log('Sending note data to API:', noteData)
-      console.log('Values check:', { 
-        s3Key: s3Key, 
-        fileId: fileId, 
-        hasS3Key: !!s3Key, 
-        hasFileId: !!fileId 
-      })
-
-      await sendNoteToAPI(noteData)
-
+      // 成功後にフォームをクリア
       setTitle('')
       setTags('')
+      setSelectedFiles([])
+      setFileUploadKey(prev => prev + 1) // FileUploadコンポーネントをリセット
+      setSuccessMessage(`${selectedFiles.length}個のファイルが正常に保存されました`)
+      setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
-      console.error('Failed to upload file:', error)
+      console.error('Failed to upload files:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -200,6 +225,8 @@ export default function NoteInputSection() {
       setTitle('')
       setTags('')
       setNotionUrl('')
+      setSuccessMessage('Notionページが正常に取得・保存されました')
+      setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
       console.error('Failed to import from Notion:', error)
     } finally {
@@ -208,18 +235,41 @@ export default function NoteInputSection() {
   }
 
   return (
-    <Box
-      p={{ base: 4, md: 6 }}
-      bg="white"
-      borderRadius="lg"
-      shadow="sm"
-      border="1px"
-      borderColor="gray.200"
-    >
+    <>
+      {/* スナックバー */}
+      {successMessage && (
+        <Box
+          position="fixed"
+          bottom={4}
+          right={4}
+          zIndex={9999}
+          bg="green.500"
+          color="white"
+          p={4}
+          borderRadius="md"
+          shadow="lg"
+          maxW="300px"
+          animation="fade-in 0.3s ease-in-out"
+        >
+          <Text fontSize="sm" fontWeight="medium">
+            {successMessage}
+          </Text>
+        </Box>
+      )}
+
+      <Box
+        p={{ base: 4, md: 6 }}
+        bg="white"
+        borderRadius="lg"
+        shadow="sm"
+        border="1px"
+        borderColor="gray.200"
+      >
       <VStack gap={{ base: 3, md: 4 }} align="stretch">
         <Text fontSize="lg" fontWeight="bold" color="purple.600">
           ノート登録
         </Text>
+
 
         {/* 入力方法選択タブ */}
         <Tabs.Root
@@ -244,16 +294,19 @@ export default function NoteInputSection() {
           <Tabs.Content value="text">
             <VStack gap={3} align="stretch">
               <Input
-                placeholder="タイトルを入力してください"
+                placeholder="タイトルを入力してください（必須）"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
+                required
               />
               <Input
                 placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <Textarea
                 placeholder="ノート内容を入力してください"
@@ -266,7 +319,7 @@ export default function NoteInputSection() {
               <Button
                 colorScheme="purple"
                 onClick={handleTextSave}
-                disabled={!textContent.trim() || isSubmitting}
+                disabled={!title.trim() || !textContent.trim() || isSubmitting}
                 loading={isSubmitting}
                 loadingText="保存中..."
                 w="full"
@@ -279,23 +332,28 @@ export default function NoteInputSection() {
           <Tabs.Content value="file">
             <VStack gap={3} align="stretch">
               <Input
-                placeholder="タイトルを入力してください"
+                placeholder="タイトルを入力してください（必須）"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
+                required
               />
               <Input
                 placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <FileUpload.Root
+                key={fileUploadKey}
                 accept="image/*,.pdf,.txt,.docx"
                 onFileChange={(details) =>
-                  handleFileUpload(details.acceptedFiles)
+                  setSelectedFiles(details.acceptedFiles)
                 }
-                maxFiles={1}
+                maxFiles={5}
+                w="full"
               >
                 <FileUpload.Dropzone
                   border="2px dashed"
@@ -304,6 +362,8 @@ export default function NoteInputSection() {
                   p={8}
                   textAlign="center"
                   cursor="pointer"
+                  w="full"
+                  minH="120px"
                   _hover={{
                     borderColor: 'purple.400',
                     bg: 'purple.50',
@@ -315,19 +375,70 @@ export default function NoteInputSection() {
                       ファイルをドロップまたはクリックして選択
                     </Text>
                     <Text fontSize="xs" color="gray.500">
-                      PDF, Word, テキスト, 画像ファイルに対応
+                      PDF, Word, テキスト, 画像ファイルに対応（最大5ファイル）
                     </Text>
                   </VStack>
                 </FileUpload.Dropzone>
 
                 <FileUpload.HiddenInput />
-
-                <FileUpload.Trigger asChild>
-                  <Button variant="outline" w="full" mt={3}>
-                    ファイルを選択
-                  </Button>
-                </FileUpload.Trigger>
               </FileUpload.Root>
+
+              {/* 選択されたファイル一覧 */}
+              {selectedFiles.length > 0 && (
+                <Box mt={3} p={3} bg="gray.50" borderRadius="md">
+                  <HStack justify="space-between" align="center" mb={2}>
+                    <Text fontSize="sm" fontWeight="semibold">
+                      選択されたファイル ({selectedFiles.length}個)
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      color="red.500"
+                      onClick={clearAllFiles}
+                      _hover={{ bg: 'red.50' }}
+                    >
+                      全て削除
+                    </Button>
+                  </HStack>
+                  <VStack gap={1} align="stretch">
+                    {selectedFiles.map((file, index) => (
+                      <HStack key={index} justify="space-between" align="center">
+                        <Text fontSize="xs" color="gray.600" truncate flex="1">
+                          {file.name}
+                        </Text>
+                        <Text fontSize="xs" color="gray.500" mr={2}>
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </Text>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          color="red.500"
+                          p={1}
+                          minW="auto"
+                          h="20px"
+                          onClick={() => removeFile(index)}
+                          _hover={{ bg: 'red.50' }}
+                        >
+                          <FaTimes size={10} />
+                        </Button>
+                      </HStack>
+                    ))}
+                  </VStack>
+                </Box>
+              )}
+
+              {/* ファイル登録ボタン */}
+              <Button
+                colorScheme="purple"
+                onClick={handleFileUpload}
+                disabled={!title.trim() || !selectedFiles.length || isSubmitting}
+                loading={isSubmitting}
+                loadingText="登録中..."
+                w="full"
+                mt={selectedFiles.length > 0 ? 2 : 0}
+              >
+                ファイルを保存
+              </Button>
             </VStack>
           </Tabs.Content>
 
@@ -407,37 +518,42 @@ export default function NoteInputSection() {
               )}
 
               <Input
-                placeholder="タイトルを入力してください"
+                placeholder="タイトルを入力してください（必須）"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
+                required
               />
               <Input
                 placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <Input
                 placeholder="NotionページのURLを入力"
                 value={notionUrl}
                 onChange={(e) => setNotionUrl(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <Button
                 colorScheme="purple"
                 onClick={handleNotionImport}
-                disabled={!notionUrl.trim() || isSubmitting}
+                disabled={!title.trim() || !notionUrl.trim() || isSubmitting}
                 loading={isSubmitting}
                 loadingText="取得中..."
                 w="full"
               >
-                Notionから取得
+                Notionページを保存
               </Button>
             </VStack>
           </Tabs.Content>
         </Tabs.Root>
       </VStack>
-    </Box>
+      </Box>
+    </>
   )
 }
