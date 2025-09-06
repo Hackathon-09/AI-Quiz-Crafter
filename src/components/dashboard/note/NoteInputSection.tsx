@@ -72,7 +72,9 @@ export default function NoteInputSection() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorText = await response.text()
+        console.error(`HTTP ${response.status} error:`, errorText)
+        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
       }
 
       const result = await response.json()
@@ -94,6 +96,7 @@ export default function NoteInputSection() {
         sourceType: 'text' as const,
         title: title || '無題のノート',
         content: textContent,
+        contentType: 'text/plain',
         tags: tags,
       }
 
@@ -159,6 +162,14 @@ export default function NoteInputSection() {
         tags: tags,
       }
 
+      console.log('Sending note data to API:', noteData)
+      console.log('Values check:', { 
+        s3Key: s3Key, 
+        fileId: fileId, 
+        hasS3Key: !!s3Key, 
+        hasFileId: !!fileId 
+      })
+
       await sendNoteToAPI(noteData)
 
       setTitle('')
@@ -180,6 +191,7 @@ export default function NoteInputSection() {
         sourceType: 'notion' as const,
         title: title || '無題のNotion',
         notionUrl: notionUrl,
+        contentType: 'text/html',
         tags: tags,
       }
 
@@ -280,7 +292,9 @@ export default function NoteInputSection() {
               />
               <FileUpload.Root
                 accept="image/*,.pdf,.txt,.docx"
-                onFileChange={(details) => handleFileUpload(details.acceptedFiles)}
+                onFileChange={(details) =>
+                  handleFileUpload(details.acceptedFiles)
+                }
                 maxFiles={1}
               >
                 <FileUpload.Dropzone
@@ -291,8 +305,8 @@ export default function NoteInputSection() {
                   textAlign="center"
                   cursor="pointer"
                   _hover={{
-                    borderColor: "purple.400",
-                    bg: "purple.50"
+                    borderColor: 'purple.400',
+                    bg: 'purple.50',
                   }}
                 >
                   <VStack gap={2}>
@@ -305,9 +319,9 @@ export default function NoteInputSection() {
                     </Text>
                   </VStack>
                 </FileUpload.Dropzone>
-                
+
                 <FileUpload.HiddenInput />
-                
+
                 <FileUpload.Trigger asChild>
                   <Button variant="outline" w="full" mt={3}>
                     ファイルを選択
