@@ -7,18 +7,16 @@ import {
   Box,
   Button,
   Text,
-  Progress,
   Card,
-  Heading,
-  RadioGroup,
-  Textarea,
-  Badge,
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Question, QuizSession, QuizSettings } from '@/types/quiz'
 import { mockQuestions } from '@/data/mockQuestions'
-import { FaArrowLeft, FaArrowRight, FaCheck, FaClock } from 'react-icons/fa'
+import { FaArrowLeft, FaArrowRight, FaCheck } from 'react-icons/fa'
+import QuizHeader from '@/components/quiz/QuizHeader'
+import QuestionDisplay from '@/components/quiz/QuestionDisplay'
+import AnswerInput from '@/components/quiz/AnswerInput'
 
 export default function QuizExecutionPage() {
   const router = useRouter()
@@ -202,154 +200,33 @@ export default function QuizExecutionPage() {
     }
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
 
-  const renderAnswerInput = () => {
-    switch (currentQuestion.type) {
-      case 'multiple-choice':
-        return (
-          <RadioGroup.Root
-            value={currentAnswer}
-            onValueChange={(details) => setCurrentAnswer(details.value || '')}
-          >
-            <VStack gap={3} align="stretch">
-              {currentQuestion.choices?.map((choice, index) => (
-                <RadioGroup.Item
-                  key={index}
-                  value={index.toString()}
-                  p={4}
-                  borderRadius="md"
-                  border="1px"
-                  borderColor="gray.200"
-                  _hover={{ bg: 'gray.50' }}
-                  cursor="pointer"
-                >
-                  <HStack>
-                    <RadioGroup.ItemHiddenInput />
-                    <RadioGroup.ItemIndicator />
-                    <Text fontSize="md">{choice}</Text>
-                  </HStack>
-                </RadioGroup.Item>
-              ))}
-            </VStack>
-          </RadioGroup.Root>
-        )
-
-      case 'true-false':
-        return (
-          <RadioGroup.Root
-            value={currentAnswer}
-            onValueChange={(details) => setCurrentAnswer(details.value || '')}
-          >
-            <HStack gap={6} justify="center">
-              {currentQuestion.options?.map((option) => (
-                <RadioGroup.Item
-                  key={option}
-                  value={option}
-                  p={4}
-                  minW="120px"
-                  textAlign="center"
-                  borderRadius="md"
-                  border="2px"
-                  borderColor="gray.200"
-                  _hover={{ bg: 'blue.50', borderColor: 'blue.300' }}
-                  cursor="pointer"
-                >
-                  <VStack>
-                    <RadioGroup.ItemHiddenInput />
-                    <RadioGroup.ItemIndicator />
-                    <Text fontSize="lg" fontWeight="medium">
-                      {option}
-                    </Text>
-                  </VStack>
-                </RadioGroup.Item>
-              ))}
-            </HStack>
-          </RadioGroup.Root>
-        )
-
-      case 'essay':
-        return (
-          <Textarea
-            value={currentAnswer}
-            onChange={(e) => setCurrentAnswer(e.target.value)}
-            placeholder="回答を入力してください"
-            minH="150px"
-            resize="vertical"
-            size="md"
-          />
-        )
-
-      default:
-        return <Text>未対応の問題形式です</Text>
-    }
-  }
 
   return (
     <Container maxW="container.md" py={{ base: 4, md: 6 }}>
       {/* ヘッダー */}
-      <Card.Root mb={6} p={4}>
-        <VStack gap={4}>
-          <HStack w="full" justify="space-between">
-            <HStack gap={2}>
-              <FaClock />
-              <Text fontSize="sm" color="gray.600">
-                経過時間: {formatTime(timeSpent)}
-              </Text>
-            </HStack>
-            <Badge colorScheme="blue" size="lg">
-              {session.currentQuestionIndex + 1} / {session.questions.length}
-            </Badge>
-          </HStack>
-
-          <Box w="full">
-            <Progress.Root value={progress} size="md" colorScheme="blue" />
-          </Box>
-        </VStack>
-      </Card.Root>
+      <QuizHeader
+        currentQuestion={session.currentQuestionIndex + 1}
+        totalQuestions={session.questions.length}
+        timeSpent={timeSpent}
+        progress={progress}
+        mode="quiz"
+      />
 
       {/* 問題表示 */}
-      <Card.Root mb={6}>
-        <VStack gap={6} align="stretch" p={{ base: 6, md: 8 }}>
-          <VStack gap={3} align="start">
-            <HStack gap={2}>
-              <Badge
-                colorScheme={
-                  currentQuestion.difficulty === 'basic'
-                    ? 'green'
-                    : currentQuestion.difficulty === 'standard'
-                      ? 'yellow'
-                      : 'red'
-                }
-              >
-                {currentQuestion.difficulty === 'basic'
-                  ? '基礎'
-                  : currentQuestion.difficulty === 'standard'
-                    ? '標準'
-                    : '応用'}
-              </Badge>
-              <Badge variant="outline">
-                {currentQuestion.type === 'multiple-choice'
-                  ? '選択問題'
-                  : currentQuestion.type === 'true-false'
-                    ? '○×問題'
-                    : '記述問題'}
-              </Badge>
-            </HStack>
-
-            <Heading size="lg" lineHeight={1.6}>
-              {currentQuestion.question}
-            </Heading>
-          </VStack>
-
-          {/* 回答入力エリア */}
-          <Box>{renderAnswerInput()}</Box>
-        </VStack>
-      </Card.Root>
+      <QuestionDisplay
+        question={currentQuestion}
+        questionNumber={session.currentQuestionIndex + 1}
+        totalQuestions={session.questions.length}
+        mode="quiz"
+      >
+        <AnswerInput
+          question={currentQuestion}
+          currentAnswer={currentAnswer}
+          onAnswerChange={setCurrentAnswer}
+          mode="quiz"
+        />
+      </QuestionDisplay>
 
       {/* ナビゲーション */}
       <HStack justify="space-between">
