@@ -83,9 +83,49 @@ export default function NoteListSection() {
     fetchRecentNotes()
   }, [])
 
-  const handleDeleteNote = (noteId: string) => {
-    // TODO: 実際の削除処理を実装
-    console.log('Delete note:', noteId)
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      // 削除確認
+      const confirmed = window.confirm('このノートを削除しますか？この操作は元に戻せません。')
+      if (!confirmed) return
+
+      // Cognito認証セッションを取得
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+      
+      if (!idToken) {
+        alert('認証が必要です')
+        return
+      }
+
+      console.log('Deleting note:', noteId)
+
+      // API Gateway経由でノートを削除
+      const response = await fetch(
+        `https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/notes?noteId=${noteId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        console.log('Note deleted successfully')
+        // ローカル状態からも削除
+        setNotes(prevNotes => prevNotes.filter(note => (note.noteId || note.id) !== noteId))
+        alert('ノートが削除されました')
+      } else {
+        const errorText = await response.text()
+        console.error('Failed to delete note:', response.status, errorText)
+        alert('ノートの削除に失敗しました')
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error)
+      alert('削除中にエラーが発生しました')
+    }
   }
 
   return (
@@ -291,9 +331,9 @@ export default function NoteListSection() {
                         size="xs"
                         variant="ghost"
                         colorScheme="red"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
-                          handleDeleteNote(note.noteId || note.id)
+                          await handleDeleteNote(note.noteId || note.id)
                         }}
                       >
                         <FaTrash size={12} />
