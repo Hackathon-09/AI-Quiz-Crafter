@@ -62,7 +62,7 @@ export default function NotesPage() {
     .filter((note) => {
       const searchMatch =
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+        (note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
 
       if (selectedTags.length === 0) {
         return searchMatch
@@ -257,8 +257,14 @@ export default function NotesPage() {
                             {note.title}
                           </Text>
                           <Text fontSize="sm" color="gray.600" lineClamp={2}>
-                            {note.content.substring(0, 150)}
-                            {note.content.length > 150 ? '...' : ''}
+                            {(() => {
+                              if (note.content === undefined || note.content === null) {
+                                return 'コンテンツなし'
+                              }
+                              return note.content.length > 150 
+                                ? `${note.content.substring(0, 150)}...`
+                                : note.content
+                            })()}
                           </Text>
                           <Text fontSize="xs" color="gray.400">
                             {new Date(note.createdAt).toLocaleDateString(
@@ -343,7 +349,10 @@ export default function NotesPage() {
                   overflowY="auto"
                 >
                   <Text fontSize="md" lineHeight={1.7} whiteSpace="pre-wrap">
-                    {selectedNote.content}
+                    {selectedNote.content === undefined || selectedNote.content === null 
+                      ? 'コンテンツがありません' 
+                      : selectedNote.content
+                    }
                   </Text>
                 </Box>
 

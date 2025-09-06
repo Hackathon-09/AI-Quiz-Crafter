@@ -148,8 +148,14 @@ export default function NoteListSection() {
                         {note.title}
                       </Text>
                       <Text fontSize="xs" color="gray.500" lineClamp={2}>
-                        {note.content ? note.content.substring(0, 100) : ''}
-                        {note.content && note.content.length > 100 ? '...' : ''}
+                        {(() => {
+                          if (note.content === undefined || note.content === null) {
+                            return 'コンテンツなし'
+                          }
+                          return note.content.length > 100 
+                            ? `${note.content.substring(0, 100)}...`
+                            : note.content
+                        })()}
                       </Text>
                       <Text fontSize="xs" color="gray.400">
                         {new Date(note.createdAt).toLocaleDateString()}
@@ -209,7 +215,10 @@ export default function NoteListSection() {
               作成日: {new Date(selectedNote.createdAt).toLocaleString()}
             </Text>
             <Text fontSize="sm" lineHeight={1.6} whiteSpace="pre-wrap">
-              {selectedNote.content}
+              {selectedNote.content === undefined || selectedNote.content === null 
+                ? 'コンテンツがありません' 
+                : selectedNote.content
+              }
             </Text>
           </Box>
         )}
