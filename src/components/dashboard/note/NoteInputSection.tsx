@@ -362,49 +362,30 @@ export default function NoteInputSection() {
 
                     <VStack gap={2} align="stretch">
                       <Text fontSize="sm" fontWeight="bold" color="blue.700">
-                        2. 「共有」メニューを開く
+                        2. 「共有」→「Web公開」をオンにする
                       </Text>
                       <Text fontSize="xs" color="blue.600" pl={3}>
                         ページの右上にある
                         <Text as="span" fontWeight="bold">
                           「共有 (Share)」
                         </Text>
-                        ボタンを押します。
-                      </Text>
-                    </VStack>
-
-                    <VStack gap={2} align="stretch">
-                      <Text fontSize="sm" fontWeight="bold" color="blue.700">
-                        3. 連携機能を招待する
-                      </Text>
-                      <Text fontSize="xs" color="blue.600" pl={3}>
-                        招待メニューで、AIQuizCrafterApp を検索し、選択してから
+                        ボタンを押し、
                         <Text as="span" fontWeight="bold">
-                          「招待 (Invite)」
+                          「Web公開」をオン
                         </Text>
-                        を押してアクセスを許可します。
+                        にします。
                       </Text>
                     </VStack>
 
                     <VStack gap={2} align="stretch">
                       <Text fontSize="sm" fontWeight="bold" color="blue.700">
-                        4. ページのリンクをコピーする
+                        3. URLを登録する
                       </Text>
                       <Text fontSize="xs" color="blue.600" pl={3}>
-                        共有メニュー内にある
-                        <Text as="span" fontWeight="bold">
-                          「リンクをコピー (Copy link)」
+                        公開されたページのURLをコピーして、下の欄に貼り付けて登録してください。
+                        <Text as="span" fontWeight="bold" color="orange.600">
+                          ※インテグレーション設定は不要です
                         </Text>
-                        を押します。
-                      </Text>
-                    </VStack>
-
-                    <VStack gap={2} align="stretch">
-                      <Text fontSize="sm" fontWeight="bold" color="blue.700">
-                        5. URLを登録する
-                      </Text>
-                      <Text fontSize="xs" color="blue.600" pl={3}>
-                        この画面に戻り、コピーしたURLを下の欄に貼り付けて登録してください。
                       </Text>
                     </VStack>
                   </VStack>
