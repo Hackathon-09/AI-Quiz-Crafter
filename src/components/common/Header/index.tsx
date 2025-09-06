@@ -12,8 +12,8 @@ export default function Header() {
 
   const handleSignOut = async () => {
     try {
-      await signOut()
-      router.push('/auth')
+      signOut({ global:true})
+      router.push('/')
     } catch (error) {
       console.error('error signing out: ', error)
     }
