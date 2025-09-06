@@ -31,11 +31,11 @@ export default function AuthenticatedApp({ children }: AuthenticatedAppProps) {
   }
 
   // 認証が必要なページ
-  // if (!isAuthenticated) {
-  //   // 未認証の場合はauthページにリダイレクト
-  //   window.location.href = '/auth'
-  //   return null
-  // }
+  if (!isAuthenticated) {
+    // 未認証の場合はauthページにリダイレクト
+    window.location.href = '/auth'
+    return null
+  }
 
   // 認証済みの場合はLayoutでラップ（ヘッダーあり）
   return (
