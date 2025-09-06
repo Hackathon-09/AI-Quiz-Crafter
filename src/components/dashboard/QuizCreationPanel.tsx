@@ -75,7 +75,7 @@ export default function QuizCreationPanel() {
     .filter((note) => {
       const searchMatch =
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+        (note.content || '').toLowerCase().includes(searchQuery.toLowerCase())
 
       if (selectedTags.length === 0) {
         return searchMatch
@@ -410,8 +410,10 @@ export default function QuizCreationPanel() {
                                   )}
                                 </HStack>
                                 <Text fontSize="xs" color="gray.500" lineClamp={1}>
-                                  {note.content.substring(0, 60)}
-                                  {note.content.length > 60 ? '...' : ''}
+                                  {(() => {
+                                    const content = note.content || ''
+                                    return content.length > 60 ? `${content.substring(0, 60)}...` : content || 'コンテンツなし'
+                                  })()}
                                 </Text>
                                 <Text fontSize="xs" color="gray.400">
                                   {new Date(note.createdAt).toLocaleDateString()}
@@ -482,7 +484,7 @@ export default function QuizCreationPanel() {
                                             borderColor="gray.200"
                                           >
                                             <Text fontSize="sm" lineHeight={1.7} whiteSpace="pre-wrap">
-                                              {note.content}
+                                              {note.content || 'コンテンツがありません'}
                                             </Text>
                                           </Box>
 
