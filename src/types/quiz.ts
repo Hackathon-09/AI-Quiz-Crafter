@@ -125,3 +125,74 @@ export interface UserAnswer {
   isCorrect: boolean
   timeSpent?: number
 }
+
+/**
+ * 復習対象モード
+ */
+export const REVIEW_TARGET_MODES = ['incorrect', 'low-score', 'category', 'all'] as const
+export type ReviewTargetMode = typeof REVIEW_TARGET_MODES[number]
+
+/**
+ * 復習形式
+ */
+export const REVIEW_FORMATS = ['quiz', 'flashcard', 'explanation'] as const
+export type ReviewFormat = typeof REVIEW_FORMATS[number]
+
+/**
+ * 復習モードの設定
+ */
+export interface ReviewSettings {
+  targetMode: ReviewTargetMode
+  categories?: string[]
+  scoreThreshold?: number
+  daysPeriod?: number
+  reviewFormat: ReviewFormat
+  questionCount: QuestionCount
+}
+
+/**
+ * 復習セッション
+ */
+export interface ReviewSession {
+  id: string
+  userId: string
+  settings: ReviewSettings
+  questions: Question[]
+  originalAnswers: { [questionId: string]: UserAnswer }
+  reviewAnswers: { [questionId: string]: string | string[] }
+  currentQuestionIndex: number
+  startTime: Date
+  completedAt?: Date
+  isCompleted: boolean
+  improvementCount: number
+}
+
+/**
+ * 復習結果
+ */
+export interface ReviewResult {
+  id: string
+  reviewSessionId: string
+  userId: string
+  beforeAccuracy: number
+  afterAccuracy: number
+  improvementRate: number
+  weakAreas: string[]
+  strengthAreas: string[]
+  nextReviewDate: Date
+  completedAt: Date
+}
+
+/**
+ * 学習統計
+ */
+export interface LearningStats {
+  userId: string
+  totalQuizzes: number
+  totalQuestions: number
+  overallAccuracy: number
+  weeklyProgress: number
+  categoryStats: { [category: string]: { accuracy: number; count: number } }
+  recentResults: QuizResult[]
+  improvementTrend: number
+}

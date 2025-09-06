@@ -10,15 +10,14 @@ import {
   Text,
   Card,
   Badge,
-  Progress,
   Separator,
   Alert,
 } from '@chakra-ui/react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Question, QuizSession } from '@/types/quiz'
-import { mockQuestions } from '@/data/mockQuestions'
-import { FaHome, FaRedo, FaCheck, FaTimes, FaClock, FaTrophy } from 'react-icons/fa'
+import { FaHome, FaRedo, FaCheck, FaTimes } from 'react-icons/fa'
+import ResultSummary from '@/components/quiz/ResultSummary'
 
 export default function QuizResultPage() {
   const router = useRouter()
@@ -152,27 +151,6 @@ export default function QuizResultPage() {
     }
   }, [searchParams, calculateResults, router])
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 95) return 'purple'
-    if (score >= 85) return 'green'
-    if (score >= 70) return 'blue'
-    if (score >= 55) return 'orange'
-    return 'red'
-  }
-
-  const getScoreGrade = (score: number) => {
-    if (score >= 95) return { grade: 'S', color: 'purple.500', bg: 'purple.50', description: '完璧です！伝説的な成績！' }
-    if (score >= 85) return { grade: 'A', color: 'green.500', bg: 'green.50', description: '素晴らしい結果です！' }
-    if (score >= 70) return { grade: 'B', color: 'blue.500', bg: 'blue.50', description: 'よくできました！' }
-    if (score >= 55) return { grade: 'C', color: 'orange.500', bg: 'orange.50', description: 'もう少し頑張りましょう' }
-    return { grade: 'D', color: 'red.500', bg: 'red.50', description: '復習して再挑戦しましょう' }
-  }
 
   if (!session || !results) {
     return (
@@ -192,211 +170,21 @@ export default function QuizResultPage() {
   return (
     <Container maxW="container.md" py={{ base: 4, md: 6 }}>
       {/* 結果サマリー */}
-      <Card.Root mb={6}>
-        <VStack gap={6} p={{ base: 6, md: 8 }}>
-          <HStack gap={2}>
-            <FaTrophy color="gold" />
-            <Heading size="lg">クイズ結果</Heading>
-          </HStack>
-
-          <VStack gap={8} w="full">
-            {/* 大きなスコア表示 */}
-            <VStack>
-              <Box position="relative">
-                {/* 外側のリング */}
-                <Box
-                  position="relative"
-                  w="200px"
-                  h="200px"
-                  borderRadius="full"
-                  bg={`linear-gradient(135deg, ${getScoreGrade(results.score).bg} 0%, white 100%)`}
-                  border="4px solid"
-                  borderColor={getScoreGrade(results.score).color}
-                  boxShadow={`0 20px 40px rgba(0,0,0,0.1), 0 0 0 8px ${getScoreGrade(results.score).bg}, 0 0 30px ${getScoreGrade(results.score).color}40`}
-                  _hover={{
-                    transform: "scale(1.05)",
-                    transition: "all 0.3s ease"
-                  }}
-                >
-                  {/* 内側のコンテンツ */}
-                  <VStack 
-                    position="absolute"
-                    top="50%"
-                    left="50%"
-                    transform="translate(-50%, -50%)"
-                    gap={2}
-                  >
-                    <Text 
-                      fontSize="5xl" 
-                      fontWeight="900" 
-                      color={getScoreGrade(results.score).color}
-                      textShadow="2px 2px 4px rgba(0,0,0,0.1)"
-                    >
-                      {results.score}
-                    </Text>
-                    <Text 
-                      fontSize="lg" 
-                      fontWeight="bold" 
-                      color="gray.600"
-                      letterSpacing="wider"
-                    >
-                      POINTS
-                    </Text>
-                  </VStack>
-                  
-                  {/* グレードバッジ */}
-                  <Box
-                    position="absolute"
-                    top="-10px"
-                    right="-10px"
-                    w="60px"
-                    h="60px"
-                    borderRadius="full"
-                    bg={getScoreGrade(results.score).color}
-                    border="3px solid white"
-                    boxShadow="0 4px 12px rgba(0,0,0,0.2)"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Text 
-                      fontSize="2xl" 
-                      fontWeight="black" 
-                      color="white"
-                    >
-                      {getScoreGrade(results.score).grade}
-                    </Text>
-                  </Box>
-                </Box>
-              </Box>
-              
-              {/* メッセージとトロフィー */}
-              <VStack gap={2}>
-                <HStack gap={2}>
-                  <FaTrophy 
-                    size="24" 
-                    color={results.score >= 95 ? '#9f7aea' : 
-                           results.score >= 85 ? 'gold' : 
-                           results.score >= 70 ? 'silver' : 
-                           results.score >= 55 ? '#cd7f32' : '#cd7f32'} 
-                  />
-                  <Text 
-                    fontSize="xl" 
-                    fontWeight="bold" 
-                    color={getScoreGrade(results.score).color}
-                    textAlign="center"
-                  >
-                    {getScoreGrade(results.score).description}
-                  </Text>
-                  <FaTrophy 
-                    size="24" 
-                    color={results.score >= 95 ? '#9f7aea' : 
-                           results.score >= 85 ? 'gold' : 
-                           results.score >= 70 ? 'silver' : 
-                           results.score >= 55 ? '#cd7f32' : '#cd7f32'} 
-                  />
-                </HStack>
-                
-                {/* パフォーマンスレベル */}
-                <Box
-                  px={4}
-                  py={2}
-                  borderRadius="full"
-                  bg={`linear-gradient(90deg, ${getScoreGrade(results.score).color}20 0%, ${getScoreGrade(results.score).color}10 100%)`}
-                  border="1px solid"
-                  borderColor={getScoreGrade(results.score).color}
-                >
-                  <Text 
-                    fontSize="sm" 
-                    fontWeight="semibold"
-                    color={getScoreGrade(results.score).color}
-                    letterSpacing="wide"
-                  >
-                    {results.score >= 95 ? '👑 LEGENDARY' : 
-                     results.score >= 85 ? '🎉 EXCELLENT' :
-                     results.score >= 70 ? '✨ GREAT JOB' :
-                     results.score >= 55 ? '👍 GOOD' : '💪 PRACTICE MORE'}
-                  </Text>
-                </Box>
-              </VStack>
-            </VStack>
-
-            <HStack justify="space-around" w="full">
-
-              <VStack>
-                <Box 
-                  p={3} 
-                  borderRadius="lg" 
-                  bg="green.50"
-                  border="2px solid"
-                  borderColor="green.200"
-                >
-                  <VStack gap={1}>
-                    <FaCheck size="24" color="green" />
-                    <Text fontSize="xl" fontWeight="bold" color="green.600">
-                      {results.correctCount}
-                    </Text>
-                  </VStack>
-                </Box>
-                <Text fontSize="sm" fontWeight="medium" color="green.600">正解</Text>
-              </VStack>
-
-              <VStack>
-                <Box 
-                  p={3} 
-                  borderRadius="lg" 
-                  bg="red.50"
-                  border="2px solid"
-                  borderColor="red.200"
-                >
-                  <VStack gap={1}>
-                    <FaTimes size="24" color="red" />
-                    <Text fontSize="xl" fontWeight="bold" color="red.600">
-                      {results.incorrectCount}
-                    </Text>
-                  </VStack>
-                </Box>
-                <Text fontSize="sm" fontWeight="medium" color="red.600">不正解</Text>
-              </VStack>
-
-              <VStack>
-                <Box 
-                  p={3} 
-                  borderRadius="lg" 
-                  bg="blue.50"
-                  border="2px solid"
-                  borderColor="blue.200"
-                >
-                  <VStack gap={1}>
-                    <FaClock size="24" color="blue" />
-                    <Text fontSize="xl" fontWeight="bold" color="blue.600">
-                      {formatTime(results.timeSpent)}
-                    </Text>
-                  </VStack>
-                </Box>
-                <Text fontSize="sm" fontWeight="medium" color="blue.600">解答時間</Text>
-              </VStack>
-            </HStack>
-
-            <Box w="full" px={4}>
-              <VStack gap={2}>
-                <HStack justify="space-between" w="full">
-                  <Text fontSize="sm" fontWeight="medium" color="gray.600">進捗</Text>
-                  <Text fontSize="sm" fontWeight="bold" color={getScoreGrade(results.score).color}>
-                    {results.score}%
-                  </Text>
-                </HStack>
-                <Progress.Root 
-                  value={results.score} 
-                  size="xl" 
-                  colorScheme={getScoreColor(results.score)}
-                  borderRadius="full"
-                />
-              </VStack>
-            </Box>
-          </VStack>
-        </VStack>
-      </Card.Root>
+      <VStack gap={2} mb={6}>
+        <HStack gap={2}>
+          <Text fontSize="3xl">🎉</Text>
+          <Heading size="lg" color="blue.600">クイズ結果</Heading>
+        </HStack>
+      </VStack>
+      
+      <ResultSummary
+        totalQuestions={results.totalQuestions}
+        correctCount={results.correctCount}
+        incorrectCount={results.incorrectCount}
+        score={results.score}
+        timeSpent={results.timeSpent}
+        mode="quiz"
+      />
 
       {/* 問題別詳細結果 */}
       <VStack gap={4} align="stretch">

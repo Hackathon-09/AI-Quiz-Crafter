@@ -53,7 +53,11 @@ export default function QuizPanel() {
   }
 
   const handleReviewMode = () => {
-    router.push('/quiz/create?mode=review')
+    router.push('/review/settings')
+  }
+
+  const handleViewHistory = () => {
+    router.push('/review/history')
   }
 
   return (
@@ -274,16 +278,28 @@ export default function QuizPanel() {
             </VStack>
           </Box>
 
-          {/* 復習モードボタン */}
-          <Button
-            variant="outline"
-            colorScheme="orange"
-            size={{ base: 'md', md: 'lg' }}
-            onClick={handleReviewMode}
-            w="full"
-          >
-            復習モードを開始
-          </Button>
+          {/* 復習・履歴ボタン */}
+          <VStack gap={3}>
+            <Button
+              variant="outline"
+              colorScheme="orange"
+              size={{ base: 'md', md: 'lg' }}
+              onClick={handleReviewMode}
+              w="full"
+            >
+              📚 復習モードを開始
+            </Button>
+            
+            <Button
+              variant="ghost"
+              colorScheme="blue"
+              size={{ base: 'sm', md: 'md' }}
+              onClick={handleViewHistory}
+              w="full"
+            >
+              📊 学習履歴を見る
+            </Button>
+          </VStack>
         </VStack>
       </Box>
     </VStack>
