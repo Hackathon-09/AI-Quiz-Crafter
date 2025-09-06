@@ -33,6 +33,48 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent }: File
   const [displayContent, setDisplayContent] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
 
+  // ファイル形式判定
+  const isTextFile = (fileName?: string, contentType?: string) => {
+    if (!fileName && !contentType) return false
+    
+    const textExtensions = ['.txt', '.md', '.json', '.csv', '.log']
+    const textContentTypes = ['text/', 'application/json', 'application/csv']
+    
+    if (fileName) {
+      const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
+      if (textExtensions.some(e => ext === e)) return true
+    }
+    
+    if (contentType) {
+      if (textContentTypes.some(t => contentType.startsWith(t))) return true
+    }
+    
+    return false
+  }
+
+  const isPdfFile = (fileName?: string, contentType?: string) => {
+    return fileName?.toLowerCase().endsWith('.pdf') || 
+           contentType === 'application/pdf'
+  }
+
+  const isWordFile = (fileName?: string, contentType?: string) => {
+    return fileName?.toLowerCase().endsWith('.docx') || 
+           contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  }
+
+  const isImageFile = (fileName?: string, contentType?: string) => {
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
+    
+    if (fileName) {
+      const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
+      if (imageExtensions.some(e => ext === e)) return true
+    }
+    
+    if (contentType?.startsWith('image/')) return true
+    
+    return false
+  }
+
   useEffect(() => {
     if (note.sourceType === 'file' && note.s3Path) {
       setIsLoading(true)
@@ -65,6 +107,75 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent }: File
           <Text fontSize="sm" color="gray.500" fontStyle="italic">
             ファイル内容を読み込み中...
           </Text>
+        ) : note.sourceType === 'file' && isPdfFile(note.fileName, note.contentType) ? (
+          <VStack align="center" gap={3}>
+            <Text fontSize="sm" color="orange.600" fontWeight="medium">
+              📄 PDFファイルです
+            </Text>
+            <Text fontSize="xs" color="gray.600" textAlign="center">
+              PDFファイルは直接表示できません。<br />
+              ダウンロードして閲覧してください。
+            </Text>
+            <Button 
+              size="sm" 
+              colorScheme="blue" 
+              variant="outline"
+              onClick={() => {
+                window.alert('ダウンロード機能は今後実装予定です')
+              }}
+            >
+              ダウンロード
+            </Button>
+          </VStack>
+        ) : note.sourceType === 'file' && isWordFile(note.fileName, note.contentType) ? (
+          <VStack align="center" gap={3}>
+            <Text fontSize="sm" color="blue.600" fontWeight="medium">
+              📝 Wordファイルです
+            </Text>
+            <Text fontSize="xs" color="gray.600" textAlign="center">
+              Wordファイルは直接表示できません。<br />
+              ダウンロードして閲覧してください。
+            </Text>
+            <Button 
+              size="sm" 
+              colorScheme="blue" 
+              variant="outline"
+              onClick={() => {
+                window.alert('ダウンロード機能は今後実装予定です')
+              }}
+            >
+              ダウンロード
+            </Button>
+          </VStack>
+        ) : note.sourceType === 'file' && isImageFile(note.fileName, note.contentType) ? (
+          <VStack align="center" gap={3}>
+            <Text fontSize="sm" color="green.600" fontWeight="medium">
+              🖼️ 画像ファイルです
+            </Text>
+            <Text fontSize="xs" color="gray.600" textAlign="center">
+              画像ファイルは直接表示できません。<br />
+              ダウンロードして閲覧してください。
+            </Text>
+            <Button 
+              size="sm" 
+              colorScheme="green" 
+              variant="outline"
+              onClick={() => {
+                window.alert('ダウンロード機能は今後実装予定です')
+              }}
+            >
+              ダウンロード
+            </Button>
+          </VStack>
+        ) : note.sourceType === 'file' && !isTextFile(note.fileName, note.contentType) ? (
+          <VStack align="center" gap={2}>
+            <Text fontSize="sm" color="purple.600" fontWeight="medium">
+              📁 {note.contentType || 'バイナリファイル'}
+            </Text>
+            <Text fontSize="xs" color="gray.600" textAlign="center">
+              このファイル形式は直接表示できません。
+            </Text>
+          </VStack>
         ) : (
           <Text
             fontSize="sm"
