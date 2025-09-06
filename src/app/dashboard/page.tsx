@@ -30,7 +30,7 @@ export default function DashboardPage() {
           </GridItem>
           
           <GridItem>
-            <NoteListSection notes={mockNotes} />
+            <NoteListSection />
           </GridItem>
           
           <GridItem>
