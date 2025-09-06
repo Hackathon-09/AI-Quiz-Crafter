@@ -22,6 +22,9 @@ export default function Header() {
   return (
     <Flex
       as="header"
+      position="sticky"
+      top="0"
+      zIndex="1000"
       w="full"
       h="60px"
       bg="white"
