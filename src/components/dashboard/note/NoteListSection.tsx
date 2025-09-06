@@ -27,9 +27,10 @@ interface FileContentDisplayProps {
   note: Note
   fetchFileContent: (note: Note) => Promise<string>
   loadingFileContent: {[key: string]: boolean}
+  handleDownloadFile: (note: Note) => Promise<void>
 }
 
-function FileContentDisplay({ note, fetchFileContent, loadingFileContent }: FileContentDisplayProps) {
+function FileContentDisplay({ note, fetchFileContent, loadingFileContent, handleDownloadFile }: FileContentDisplayProps) {
   const [displayContent, setDisplayContent] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -114,17 +115,15 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent }: File
             </Text>
             <Text fontSize="xs" color="gray.600" textAlign="center">
               PDFファイルは直接表示できません。<br />
-              ダウンロードして閲覧してください。
+              ブラウザで表示して閲覧してください。
             </Text>
             <Button 
               size="sm" 
               colorScheme="blue" 
               variant="outline"
-              onClick={() => {
-                window.alert('ダウンロード機能は今後実装予定です')
-              }}
+              onClick={() => handleDownloadFile(note)}
             >
-              ダウンロード
+              ブラウザで表示
             </Button>
           </VStack>
         ) : note.sourceType === 'file' && isWordFile(note.fileName, note.contentType) ? (
@@ -134,17 +133,15 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent }: File
             </Text>
             <Text fontSize="xs" color="gray.600" textAlign="center">
               Wordファイルは直接表示できません。<br />
-              ダウンロードして閲覧してください。
+              ブラウザで表示して閲覧してください。
             </Text>
             <Button 
               size="sm" 
               colorScheme="blue" 
               variant="outline"
-              onClick={() => {
-                window.alert('ダウンロード機能は今後実装予定です')
-              }}
+              onClick={() => handleDownloadFile(note)}
             >
-              ダウンロード
+              ブラウザで表示
             </Button>
           </VStack>
         ) : note.sourceType === 'file' && isImageFile(note.fileName, note.contentType) ? (
@@ -154,17 +151,15 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent }: File
             </Text>
             <Text fontSize="xs" color="gray.600" textAlign="center">
               画像ファイルは直接表示できません。<br />
-              ダウンロードして閲覧してください。
+              ブラウザで表示して閲覧してください。
             </Text>
             <Button 
               size="sm" 
               colorScheme="green" 
               variant="outline"
-              onClick={() => {
-                window.alert('ダウンロード機能は今後実装予定です')
-              }}
+              onClick={() => handleDownloadFile(note)}
             >
-              ダウンロード
+              ブラウザで表示
             </Button>
           </VStack>
         ) : note.sourceType === 'file' && !isTextFile(note.fileName, note.contentType) ? (
@@ -245,6 +240,90 @@ export default function NoteListSection() {
       setNotes([]) // エラー時は空配列
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ファイルダウンロード用のPresigned URL取得関数
+  const getDownloadUrl = async (note: Note): Promise<string | null> => {
+    console.log('Getting download URL for note:', { fileName: note.fileName, s3Path: note.s3Path, sourceType: note.sourceType })
+    
+    if (!note.s3Path || note.sourceType !== 'file') {
+      console.log('Invalid note for download:', { s3Path: note.s3Path, sourceType: note.sourceType })
+      return null
+    }
+
+    try {
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+      
+      if (!idToken) {
+        console.error('Authentication required for download')
+        return null
+      }
+
+      const requestBody = {
+        fileName: note.fileName || '',
+        contentType: note.contentType || 'application/octet-stream',
+        s3Key: note.s3Path,
+        operation: 'download'
+      }
+      console.log('Download API request body:', requestBody)
+
+      const response = await fetch(
+        'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/upload-url',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify(requestBody)
+        }
+      )
+
+      console.log('Download API response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Download API response data:', data)
+        return data.downloadUrl || data.uploadUrl || null
+      } else {
+        const errorText = await response.text()
+        console.error('Download API error:', response.status, errorText)
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error getting download URL:', error)
+      return null
+    }
+  }
+
+  // ファイルダウンロード実行関数
+  const handleDownloadFile = async (note: Note) => {
+    console.log('Download clicked for note:', note)
+    
+    try {
+      const downloadUrl = await getDownloadUrl(note)
+      console.log('Download URL received:', downloadUrl)
+      
+      if (downloadUrl) {
+        // ダウンロードリンクを作成してクリック
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = note.fileName || 'download'
+        link.target = '_blank' // 新しいタブで開く
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        console.log('Download initiated for:', note.fileName)
+      } else {
+        console.error('No download URL received')
+        alert('ファイルのダウンロードに失敗しました')
+      }
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('ダウンロード中にエラーが発生しました')
     }
   }
 
@@ -395,7 +474,7 @@ export default function NoteListSection() {
       <VStack gap={{ base: 3, md: 4 }} align="stretch">
         <HStack justify="space-between" align="center">
           <Text fontSize="lg" fontWeight="bold" color="green.600">
-            過去のノート
+            登録済みのノート
           </Text>
           <IconButton
             size="sm"
@@ -540,6 +619,7 @@ export default function NoteListSection() {
                                   <FileContentDisplay note={note} 
                                     fetchFileContent={fetchFileContent}
                                     loadingFileContent={loadingFileContent}
+                                    handleDownloadFile={handleDownloadFile}
                                   />
 
                                   {/* ファイル情報 */}
