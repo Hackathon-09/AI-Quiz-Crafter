@@ -264,6 +264,7 @@ export default function NoteInputSection() {
         shadow="sm"
         border="1px"
         borderColor="gray.200"
+        h="full"
       >
       <VStack gap={{ base: 3, md: 4 }} align="stretch">
         <Text fontSize="lg" fontWeight="bold" color="purple.600">

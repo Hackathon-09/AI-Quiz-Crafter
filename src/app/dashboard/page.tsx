@@ -1,9 +1,11 @@
 'use client'
 
-import { Container, Grid, GridItem, Heading } from '@chakra-ui/react'
-import QuizPanel from '@/components/dashboard/QuizPanel'
-import NotePanel from '@/components/dashboard/NotePanel'
-import AiTeacherPanel from '@/components/dashboard/AiTeacherPanel'
+import { Container, Grid, GridItem, Heading, VStack } from '@chakra-ui/react'
+import NoteInputSection from '@/components/dashboard/note/NoteInputSection'
+import NoteListSection from '@/components/dashboard/note/NoteListSection'
+import StatisticsPanel from '@/components/dashboard/StatisticsPanel'
+import QuizCreationPanel from '@/components/dashboard/QuizCreationPanel'
+import { mockNotes } from '@/data/mockNotes'
 
 export default function DashboardPage() {
   return (
@@ -12,30 +14,33 @@ export default function DashboardPage() {
         ダッシュボード
       </Heading>
       
-      <Grid 
-        templateColumns={{ 
-          base: "1fr", 
-          lg: "1fr 1fr 1fr" 
-        }}
-        gap={{ base: 4, md: 6 }} 
-        minH={{ base: "auto", lg: "600px" }}
-      >
-        {/* モバイル優先順: クイズ設定を最上部 */}
-        <GridItem order={{ base: 1, lg: 2 }}>
-          {/* 中央カラム: クイズ設定・統計 */}
-          <QuizPanel />
-        </GridItem>
-        
-        <GridItem order={{ base: 2, lg: 1 }}>
-          {/* 左カラム: ノート管理 */}
-          <NotePanel />
-        </GridItem>
-        
-        <GridItem order={{ base: 3, lg: 3 }}>
-          {/* 右カラム: AI教師 */}
-          <AiTeacherPanel />
-        </GridItem>
-      </Grid>
+      <VStack gap={{ base: 4, md: 6 }} align="stretch">
+        {/* 最上段：ノート登録、過去のノート、学習統計を3列配置 */}
+        <Grid 
+          templateColumns={{ 
+            base: "1fr", 
+            md: "1fr 1fr",
+            lg: "1fr 1fr 1fr" 
+          }}
+          gap={{ base: 4, md: 6 }} 
+          alignItems="stretch"
+        >
+          <GridItem>
+            <NoteInputSection />
+          </GridItem>
+          
+          <GridItem>
+            <NoteListSection notes={mockNotes} />
+          </GridItem>
+          
+          <GridItem>
+            <StatisticsPanel />
+          </GridItem>
+        </Grid>
+
+        {/* 次の段：クイズ作成を横幅いっぱいで配置 */}
+        <QuizCreationPanel />
+      </VStack>
     </Container>
   )
 }

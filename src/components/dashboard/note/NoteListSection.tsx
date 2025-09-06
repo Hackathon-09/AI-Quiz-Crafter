@@ -39,7 +39,7 @@ export default function NoteListSection({ notes }: NoteListSectionProps) {
       shadow="sm"
       border="1px"
       borderColor="gray.200"
-      flex={1}
+      h="full"
     >
       <VStack gap={{ base: 3, md: 4 }} align="stretch">
         <Text fontSize="lg" fontWeight="bold" color="green.600">
