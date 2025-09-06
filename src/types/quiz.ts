@@ -69,12 +69,28 @@ export interface QuizSettings {
  */
 export interface Question {
   id: string
+  type: QuestionType
   question: string
-  choices?: string[]
-  answer: string
-  explanation: string
+  choices?: string[]  // multiple-choice用の選択肢
+  options?: string[]  // true-false用の選択肢
+  correctAnswer: string | number  // 正解
+  explanation?: string
   tags?: string[]
-  difficulty?: Difficulty
+  difficulty: Difficulty
+}
+
+/**
+ * クイズセッション（実行時の状態管理用）
+ */
+export interface QuizSession {
+  id: string
+  questions: Question[]
+  answers: { [questionId: string]: string | string[] }
+  currentQuestionIndex: number
+  startTime: Date
+  completedAt?: Date
+  settings: QuizSettings
+  isCompleted: boolean
 }
 
 /**
