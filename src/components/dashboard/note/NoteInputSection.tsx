@@ -294,16 +294,19 @@ export default function NoteInputSection() {
           <Tabs.Content value="text">
             <VStack gap={3} align="stretch">
               <Input
-                placeholder="タイトルを入力してください"
+                placeholder="タイトルを入力してください（必須）"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
+                required
               />
               <Input
                 placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <Textarea
                 placeholder="ノート内容を入力してください"
@@ -316,7 +319,7 @@ export default function NoteInputSection() {
               <Button
                 colorScheme="purple"
                 onClick={handleTextSave}
-                disabled={!textContent.trim() || isSubmitting}
+                disabled={!title.trim() || !textContent.trim() || isSubmitting}
                 loading={isSubmitting}
                 loadingText="保存中..."
                 w="full"
@@ -329,11 +332,12 @@ export default function NoteInputSection() {
           <Tabs.Content value="file">
             <VStack gap={3} align="stretch">
               <Input
-                placeholder="タイトルを入力してください"
+                placeholder="タイトルを入力してください（必須）"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 size="lg"
                 w="full"
+                required
               />
               <Input
                 placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
@@ -427,13 +431,13 @@ export default function NoteInputSection() {
               <Button
                 colorScheme="purple"
                 onClick={handleFileUpload}
-                disabled={!selectedFiles.length || isSubmitting}
+                disabled={!title.trim() || !selectedFiles.length || isSubmitting}
                 loading={isSubmitting}
                 loadingText="登録中..."
                 w="full"
                 mt={selectedFiles.length > 0 ? 2 : 0}
               >
-                ファイルを登録
+                ファイルを保存
               </Button>
             </VStack>
           </Tabs.Content>
@@ -514,32 +518,36 @@ export default function NoteInputSection() {
               )}
 
               <Input
-                placeholder="タイトルを入力してください"
+                placeholder="タイトルを入力してください（必須）"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
+                required
               />
               <Input
                 placeholder="タグを入力してください（例: 勉強, メモ, アイデア）"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <Input
                 placeholder="NotionページのURLを入力"
                 value={notionUrl}
                 onChange={(e) => setNotionUrl(e.target.value)}
-                size="md"
+                size="lg"
+                w="full"
               />
               <Button
                 colorScheme="purple"
                 onClick={handleNotionImport}
-                disabled={!notionUrl.trim() || isSubmitting}
+                disabled={!title.trim() || !notionUrl.trim() || isSubmitting}
                 loading={isSubmitting}
                 loadingText="取得中..."
                 w="full"
               >
-                Notionから取得
+                Notionページを保存
               </Button>
             </VStack>
           </Tabs.Content>
