@@ -2,14 +2,12 @@
 
 import { Container, Heading, VStack, Text, Button } from '@chakra-ui/react'
 import { useRouter } from 'next/navigation'
-import Layout from '@/components/common/Layout'
 
 export default function QuizExecutionPage() {
   const router = useRouter()
 
   return (
-    <Layout showHeader={true}>
-      <Container maxW="container.md" py={10}>
+    <Container maxW="container.md" py={10}>
       <VStack gap={6}>
         <Text fontSize="sm" color="gray.500">問題 1 / 10</Text>
         
@@ -37,6 +35,5 @@ export default function QuizExecutionPage() {
         </VStack>
       </VStack>
       </Container>
-    </Layout>
   )
 }

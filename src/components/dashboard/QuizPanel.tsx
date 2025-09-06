@@ -47,8 +47,9 @@ export default function QuizPanel() {
       difficulty,
     }
 
-    localStorage.setItem('quizSettings', JSON.stringify(settings))
-    router.push('/quiz/create')
+    // 設定をsessionStorageに保存（URLが長くならない）
+    sessionStorage.setItem('quizSettings', JSON.stringify(settings))
+    router.push('/quiz/execution')
   }
 
   const handleReviewMode = () => {
@@ -78,6 +79,7 @@ export default function QuizPanel() {
             </Text>
             <Select.Root
               collection={questionCountOptions}
+              value={[questionCount]}
               onValueChange={(e) => {
                 const value = e.value[0]
                 if (typeof value === 'string') {
