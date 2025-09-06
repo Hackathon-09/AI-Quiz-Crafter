@@ -280,12 +280,24 @@ export default function NoteInputSection() {
               />
               <FileUpload.Root
                 accept="image/*,.pdf,.txt,.docx"
-                onFileChange={(e) => handleFileUpload(e.acceptedFiles)}
+                onFileChange={(details) => handleFileUpload(details.acceptedFiles)}
+                maxFiles={1}
               >
-                <FileUpload.Dropzone>
-                  <VStack gap={2} p={8}>
-                    <FaUpload size={24} />
-                    <Text fontSize="sm" textAlign="center">
+                <FileUpload.Dropzone
+                  border="2px dashed"
+                  borderColor="gray.300"
+                  borderRadius="md"
+                  p={8}
+                  textAlign="center"
+                  cursor="pointer"
+                  _hover={{
+                    borderColor: "purple.400",
+                    bg: "purple.50"
+                  }}
+                >
+                  <VStack gap={2}>
+                    <FaUpload size={24} color="gray" />
+                    <Text fontSize="sm" textAlign="center" color="gray.600">
                       ファイルをドロップまたはクリックして選択
                     </Text>
                     <Text fontSize="xs" color="gray.500">
@@ -293,8 +305,11 @@ export default function NoteInputSection() {
                     </Text>
                   </VStack>
                 </FileUpload.Dropzone>
+                
+                <FileUpload.HiddenInput />
+                
                 <FileUpload.Trigger asChild>
-                  <Button variant="outline" w="full">
+                  <Button variant="outline" w="full" mt={3}>
                     ファイルを選択
                   </Button>
                 </FileUpload.Trigger>
