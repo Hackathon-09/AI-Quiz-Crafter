@@ -21,8 +21,8 @@ import {
 import { 
   Dialog
 } from '@chakra-ui/react'
-import { FaCheck, FaSearch, FaCalendarAlt, FaSortAmountDown, FaSortAmountUp, FaInfoCircle, FaTimes } from 'react-icons/fa'
-import { useState } from 'react'
+import { FaCheck, FaSearch, FaSortAmountDown, FaSortAmountUp, FaSync } from 'react-icons/fa'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createListCollection } from '@chakra-ui/react'
 import {
@@ -35,7 +35,8 @@ import {
   QUESTION_COUNT_OPTIONS,
 } from '@/types/quiz'
 import { Note } from '@/types'
-import { mockNotes } from '@/data/mockNotes'
+import { fetchAuthSession } from 'aws-amplify/auth'
+import FilePreview from '@/components/shared/FilePreview'
 
 export default function QuizCreationPanel() {
   const router = useRouter()
@@ -44,12 +45,200 @@ export default function QuizCreationPanel() {
     useState<QuestionType>('multiple-choice')
   const [difficulty, setDifficulty] = useState<Difficulty>('standard')
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
-  const [notes] = useState<Note[]>(mockNotes)
+  const [notes, setNotes] = useState<Note[]>([])
+  const [loading, setLoading] = useState(true)
+  const [fileContent, setFileContent] = useState<{[key: string]: string}>({})
+  const [loadingFileContent, setLoadingFileContent] = useState<{[key: string]: boolean}>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [tagFilterType, setTagFilterType] = useState<'or' | 'and'>('and')
+
+  // API呼び出し関数
+  const fetchNotes = async () => {
+    try {
+      setLoading(true)
+      
+      // Cognito認証セッションを取得
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+      
+      if (!idToken) {
+        console.log('Authentication required - no ID token')
+        setNotes([])
+        return
+      }
+
+      console.log('Making API request to notes endpoint...')
+      
+      // API Gateway経由でノートを取得
+      const response = await fetch(
+        'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/notes',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const fetchedNotes = await response.json()
+        console.log('Fetched notes:', fetchedNotes)
+        setNotes(fetchedNotes)
+      } else {
+        const errorText = await response.text()
+        console.error('API Error:', response.status, errorText)
+        setNotes([])
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error)
+      setNotes([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ファイルダウンロード用のPresigned URL取得関数
+  const getDownloadUrl = async (note: Note): Promise<string | null> => {
+    if (!note.s3Path || note.sourceType !== 'file') {
+      return null
+    }
+
+    try {
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+      
+      if (!idToken) {
+        return null
+      }
+
+      const response = await fetch(
+        'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/upload-url',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            fileName: note.fileName || '',
+            contentType: note.contentType || 'application/octet-stream',
+            s3Key: note.s3Path,
+            operation: 'download'
+          })
+        }
+      )
+      
+      if (response.ok) {
+        const data = await response.json()
+        return data.downloadUrl || data.uploadUrl || null
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error getting download URL:', error)
+      return null
+    }
+  }
+
+  // ファイルダウンロード実行関数
+  const handleDownloadFile = async (note: Note) => {
+    try {
+      const downloadUrl = await getDownloadUrl(note)
+      
+      if (downloadUrl) {
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = note.fileName || 'download'
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        alert('ファイルのダウンロードに失敗しました')
+      }
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('ダウンロード中にエラーが発生しました')
+    }
+  }
+
+  // ファイル内容を取得する関数
+  const fetchFileContent = async (note: Note): Promise<string> => {
+    if (!note.s3Path || note.sourceType !== 'file') {
+      return ''
+    }
+    
+    if (fileContent[note.s3Path]) {
+      return fileContent[note.s3Path]
+    }
+
+    if (loadingFileContent[note.s3Path]) {
+      return 'ファイル内容を読み込み中...'
+    }
+
+    try {
+      setLoadingFileContent(prev => ({...prev, [note.s3Path!]: true}))
+      
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+      
+      if (!idToken) {
+        return 'ファイル内容の取得には認証が必要です'
+      }
+
+      const response = await fetch(
+        'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/upload-url',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            fileName: note.fileName || '',
+            contentType: note.contentType || 'application/octet-stream',
+            s3Key: note.s3Path,
+            operation: 'download'
+          })
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const downloadUrl = data.downloadUrl || data.uploadUrl
+        if (!downloadUrl) {
+          return 'ダウンロードURLが見つかりません'
+        }
+        const fileResponse = await fetch(downloadUrl)
+        
+        if (fileResponse.ok) {
+          const content = await fileResponse.text()
+          setFileContent(prev => ({...prev, [note.s3Path!]: content}))
+          return content
+        } else {
+          return `ファイル取得エラー: ${fileResponse.status} ${fileResponse.statusText}`
+        }
+      } else {
+        return `Presigned URL取得エラー: ${response.status}`
+      }
+      
+      return 'ファイル内容の取得に失敗しました'
+    } catch (error) {
+      console.error('Error fetching file content:', error)
+      return 'ファイル内容の取得中にエラーが発生しました'
+    } finally {
+      setLoadingFileContent(prev => ({...prev, [note.s3Path!]: false}))
+    }
+  }
+
+  // コンポーネントマウント時にノートを取得
+  useEffect(() => {
+    fetchNotes()
+  }, [])
 
   // Select用のコレクション定義
   const questionCountOptions = createListCollection({
@@ -247,9 +436,21 @@ export default function QuizCreationPanel() {
           {/* 右側：ノート一覧エリア */}
           <GridItem>
             <VStack gap={4} align="stretch" h="full">
-              <Text fontSize="sm" fontWeight="medium">
-                ノートを選択 ({selectedNotes.length}個選択中)
-              </Text>
+              <HStack justify="space-between" align="center">
+                <Text fontSize="sm" fontWeight="medium">
+                  ノートを選択 ({selectedNotes.length}個選択中)
+                </Text>
+                <IconButton
+                  size="sm"
+                  variant="outline"
+                  colorScheme="blue"
+                  onClick={() => fetchNotes()}
+                  loading={loading}
+                  aria-label="リロード"
+                >
+                  <FaSync />
+                </IconButton>
+              </HStack>
               
               {/* 検索・フィルター */}
               <Card.Root p={3}>
@@ -348,16 +549,29 @@ export default function QuizCreationPanel() {
                     </Select.Root>
                   </VStack>
 
-                  <Text fontSize="xs" color="gray.500">
-                    {filteredNotes.length}件のノートが見つかりました
-                  </Text>
+                  <HStack justify="space-between" align="center">
+                    <Text fontSize="xs" color="gray.500">
+                      {filteredNotes.length}件のノートが見つかりました
+                    </Text>
+                    {notes.length > 0 && (
+                      <Text fontSize="xs" color="gray.400">
+                        全{notes.length}件中
+                      </Text>
+                    )}
+                  </HStack>
                 </VStack>
               </Card.Root>
 
               {/* ノート一覧 */}
               <Box maxH="300px" overflowY="auto" flex={1}>
                 <VStack gap={2} align="stretch">
-                  {filteredNotes.length === 0 ? (
+                  {loading ? (
+                    <Card.Root p={4} textAlign="center">
+                      <Text fontSize="sm" color="gray.500">
+                        ノートを読み込み中...
+                      </Text>
+                    </Card.Root>
+                  ) : filteredNotes.length === 0 ? (
                     <Card.Root p={4} textAlign="center">
                       <VStack gap={2}>
                         <Text fontSize="sm" color="gray.500">
@@ -370,10 +584,11 @@ export default function QuizCreationPanel() {
                     </Card.Root>
                   ) : (
                     filteredNotes.map((note) => {
-                      const isSelected = selectedNotes.includes(note.id)
+                      const noteId = note.noteId || note.id
+                      const isSelected = selectedNotes.includes(noteId)
                       return (
                         <Card.Root
-                          key={note.id}
+                          key={noteId}
                           p={3}
                           transition="all 0.2s"
                           bg={isSelected ? 'blue.50' : 'white'}
@@ -392,9 +607,9 @@ export default function QuizCreationPanel() {
                               cursor="pointer"
                               onClick={() => {
                                 if (isSelected) {
-                                  setSelectedNotes(prev => prev.filter(id => id !== note.id))
+                                  setSelectedNotes(prev => prev.filter(id => id !== noteId))
                                 } else {
-                                  setSelectedNotes(prev => [...prev, note.id])
+                                  setSelectedNotes(prev => [...prev, noteId])
                                 }
                               }}
                             >
@@ -431,7 +646,7 @@ export default function QuizCreationPanel() {
                                     variant="outline"
                                     colorScheme="blue"
                                     onClick={(e) => {
-                                      e.stopPropagation() // カード選択を防ぐ
+                                      e.stopPropagation()
                                     }}
                                   >
                                     ノートを見る
@@ -474,19 +689,14 @@ export default function QuizCreationPanel() {
                                           </Box>
                                           
                                           {/* ノート内容 */}
-                                          <Box
-                                            p={4}
-                                            bg="gray.50"
-                                            borderRadius="md"
-                                            maxH="400px"
-                                            overflowY="auto"
-                                            border="1px"
-                                            borderColor="gray.200"
-                                          >
-                                            <Text fontSize="sm" lineHeight={1.7} whiteSpace="pre-wrap">
-                                              {note.content || 'コンテンツがありません'}
-                                            </Text>
-                                          </Box>
+                                          <FilePreview 
+                                            note={note} 
+                                            fetchFileContent={fetchFileContent}
+                                            loadingFileContent={loadingFileContent}
+                                            handleDownloadFile={handleDownloadFile}
+                                            maxHeight="400px"
+                                            showFileName={false}
+                                          />
 
                                           {/* アクションボタン */}
                                           <HStack justify="end" gap={2}>
@@ -495,9 +705,9 @@ export default function QuizCreationPanel() {
                                               colorScheme="blue"
                                               onClick={() => {
                                                 if (isSelected) {
-                                                  setSelectedNotes(prev => prev.filter(id => id !== note.id))
+                                                  setSelectedNotes(prev => prev.filter(id => id !== noteId))
                                                 } else {
-                                                  setSelectedNotes(prev => [...prev, note.id])
+                                                  setSelectedNotes(prev => [...prev, noteId])
                                                 }
                                               }}
                                             >
