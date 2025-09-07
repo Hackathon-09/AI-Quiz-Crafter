@@ -353,7 +353,7 @@ export default function QuizCreationPanel() {
 
       console.log('API呼び出し開始:', {
         url: 'https://m8qv314ft6.execute-api.ap-northeast-1.amazonaws.com/dev/',
-        noteIds: selectedNotes,
+        noteId: selectedNotes,
         note: combinedContent,
         contentLength: combinedContent.length
       })
@@ -369,7 +369,7 @@ export default function QuizCreationPanel() {
           },
           body: JSON.stringify({
             note: combinedContent,
-            noteId: selectedNotes, // 複数ノートIDを結合
+            noteId: selectedNotes, // 複数ノートIDを配列で送信
             num_questions: parseInt(questionCount),
             difficulty: difficultyMapping[difficulty] || '標準',
             question_format: formatMapping[questionType] || '選択式'
@@ -386,28 +386,40 @@ export default function QuizCreationPanel() {
       if (response.ok) {
         const result = await response.json()
         console.log('クイズ生成成功:', result)
-        console.log('result.quizzies:', result.quizzies)
+        
+        // Lambda関数からのレスポンス構造を処理
+        let quizData
+        if (result.statusCode === 200) {
+          // Lambda関数がAPI Gateway経由で呼ばれた場合
+          quizData = JSON.parse(result.body)
+        } else {
+          // 直接呼び出しの場合
+          quizData = result
+        }
+        
+        console.log('解析後のクイズデータ:', quizData)
+        console.log('quizData.quizzies:', quizData.quizzies)
         
         // APIレスポンスの構造確認
-        if (!result.quizzies || !Array.isArray(result.quizzies)) {
-          console.error('Invalid API response structure:', result)
+        if (!quizData.quizzies || !Array.isArray(quizData.quizzies)) {
+          console.error('Invalid API response structure:', quizData)
           alert('サーバーから無効なレスポンスが返されました。')
           return
         }
         
         // 生成されたクイズをsessionStorageに保存
-        const quizData = {
+        const quizDataForStorage = {
           settings: {
             questionCount,
             questionType,
             difficulty,
             selectedNotes: selectedNotes,
           },
-          questions: result.quizzies,
+          questions: quizData.quizzies,
           generatedAt: new Date().toISOString()
         }
         
-        sessionStorage.setItem('generatedQuiz', JSON.stringify(quizData))
+        sessionStorage.setItem('generatedQuiz', JSON.stringify(quizDataForStorage))
         
         // 実行ページに遷移
         router.push('/quiz/execution')
