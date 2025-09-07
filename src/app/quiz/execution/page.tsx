@@ -27,9 +27,63 @@ export default function QuizExecutionPage() {
 
   // クイズセッションを初期化
   useEffect(() => {
-    let settings: QuizSettings
-    
     try {
+      // まず生成されたクイズデータを確認
+      const generatedQuizData = sessionStorage.getItem('generatedQuiz')
+      
+      if (generatedQuizData) {
+        console.log('Generated quiz data found:', generatedQuizData)
+        const generatedQuiz = JSON.parse(generatedQuizData)
+        console.log('Parsed generated quiz:', generatedQuiz)
+        
+        // データ構造の確認
+        if (!generatedQuiz.questions || !Array.isArray(generatedQuiz.questions)) {
+          console.error('Invalid quiz data structure:', generatedQuiz)
+          router.push('/dashboard')
+          return
+        }
+        
+        // 生成されたクイズのフォーマットをQuestionに変換
+        interface GeneratedQuizItem {
+          quizId?: string
+          question: string
+          choices?: string[]
+          answer: string
+          explanation?: string
+          intent?: string
+        }
+
+        const convertedQuestions: Question[] = generatedQuiz.questions.map((q: GeneratedQuizItem, index: number) => ({
+          id: q.quizId || `generated-${index}`,
+          type: generatedQuiz.settings.questionType,
+          question: q.question,
+          choices: generatedQuiz.settings.questionType === 'multiple-choice' ? q.choices : undefined,
+          options: generatedQuiz.settings.questionType === 'true-false' ? q.choices : undefined,
+          correctAnswer: q.answer,
+          explanation: q.explanation,
+          tags: [],
+          difficulty: generatedQuiz.settings.difficulty
+        }))
+
+        const newSession: QuizSession = {
+          id: `session-${Date.now()}`,
+          questions: convertedQuestions,
+          answers: {},
+          currentQuestionIndex: 0,
+          startTime: new Date(),
+          settings: generatedQuiz.settings,
+          isCompleted: false,
+        }
+
+        console.log('Created session with generated questions:', newSession)
+        setSession(newSession)
+        return
+      }
+
+      // フォールバック: 従来のquizSettingsを使用
+      console.log('No generated quiz found, falling back to mock questions')
+      let settings: QuizSettings
+      
       // sessionStorageからクイズ設定を取得
       const settingsData = sessionStorage.getItem('quizSettings')
       if (!settingsData) {
@@ -51,37 +105,36 @@ export default function QuizExecutionPage() {
         router.push('/dashboard')
         return
       }
+
+      // 設定に基づいて問題をフィルタリング
+      const filteredQuestions = mockQuestions
+        .filter(
+          (q) =>
+            q.type === settings.questionType && q.difficulty === settings.difficulty
+        )
+        .slice(0, parseInt(settings.questionCount))
+
+      // フィルター結果が空の場合でもセッションを作成
+      if (filteredQuestions.length === 0) {
+        console.warn(`No questions found for type: ${settings.questionType}, difficulty: ${settings.difficulty}`)
+      }
+
+      const newSession: QuizSession = {
+        id: `session-${Date.now()}`,
+        questions: filteredQuestions,
+        answers: {},
+        currentQuestionIndex: 0,
+        startTime: new Date(),
+        settings: settings,
+        isCompleted: false,
+      }
+
+      setSession(newSession)
     } catch (error) {
-      console.error('Failed to parse settings:', error)
+      console.error('Failed to initialize quiz session:', error)
       router.push('/dashboard')
-      return
     }
-
-    // 設定に基づいて問題をフィルタリング
-    const filteredQuestions = mockQuestions
-      .filter(
-        (q) =>
-          q.type === settings.questionType && q.difficulty === settings.difficulty
-      )
-      .slice(0, parseInt(settings.questionCount))
-
-    // フィルター結果が空の場合でもセッションを作成
-    if (filteredQuestions.length === 0) {
-      console.warn(`No questions found for type: ${settings.questionType}, difficulty: ${settings.difficulty}`)
-    }
-
-    const newSession: QuizSession = {
-      id: `session-${Date.now()}`,
-      questions: filteredQuestions,
-      answers: {},
-      currentQuestionIndex: 0,
-      startTime: new Date(),
-      settings: settings,
-      isCompleted: false,
-    }
-
-    setSession(newSession)
-  }, [searchParams])
+  }, [searchParams, router])
 
   // タイマー
   useEffect(() => {
