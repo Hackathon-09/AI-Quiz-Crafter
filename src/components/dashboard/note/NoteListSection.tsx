@@ -199,18 +199,19 @@ export default function NoteListSection() {
       
       // Cognito認証セッションを取得
       const session = await fetchAuthSession()
-      console.log('Auth session:', session)
+      console.log('[Dashboard] Auth session:', session)
       
       const idToken = session.tokens?.idToken?.toString()
-      console.log('ID Token exists:', !!idToken)
+      console.log('[Dashboard] ID Token exists:', !!idToken)
+      console.log('[Dashboard] ID Token (first 20 chars):', idToken?.substring(0, 20))
       
       if (!idToken) {
-        console.log('Authentication required - no ID token')
+        console.error('[Dashboard] Authentication required - no ID token')
         setNotes([]) // 認証なしの場合は空配列
         return
       }
 
-      console.log('Making API request to notes endpoint...')
+      console.log('[Dashboard] Making API request to notes endpoint...')
       
       // API Gateway経由でノートを取得（降順10件）
       const response = await fetch(
@@ -224,19 +225,38 @@ export default function NoteListSection() {
         }
       )
 
-      console.log('API response status:', response.status)
+      console.log('[Dashboard] API response status:', response.status)
+      console.log('[Dashboard] API response headers:', Object.fromEntries(response.headers.entries()))
 
       if (response.ok) {
-        const fetchedNotes = await response.json()
-        console.log('Fetched notes:', fetchedNotes)
-        setNotes(fetchedNotes)
+        const responseText = await response.text()
+        console.log('[Dashboard] Raw API response:', responseText)
+        
+        try {
+          const fetchedNotes = JSON.parse(responseText)
+          console.log('[Dashboard] Parsed notes:', fetchedNotes)
+          console.log('[Dashboard] Notes type:', typeof fetchedNotes)
+          console.log('[Dashboard] Is array:', Array.isArray(fetchedNotes))
+          console.log('[Dashboard] Notes length:', fetchedNotes?.length)
+          
+          if (Array.isArray(fetchedNotes)) {
+            setNotes(fetchedNotes)
+          } else {
+            console.error('[Dashboard] API response is not an array:', fetchedNotes)
+            setNotes([])
+          }
+        } catch (parseError) {
+          console.error('[Dashboard] JSON parse error:', parseError)
+          console.error('[Dashboard] Response text:', responseText)
+          setNotes([])
+        }
       } else {
         const errorText = await response.text()
-        console.error('API Error:', response.status, errorText)
+        console.error('[Dashboard] API Error:', response.status, errorText)
         setNotes([]) // エラー時は空配列
       }
     } catch (error) {
-      console.error('Error fetching notes:', error)
+      console.error('[Dashboard] Error fetching notes:', error)
       setNotes([]) // エラー時は空配列
     } finally {
       setLoading(false)
