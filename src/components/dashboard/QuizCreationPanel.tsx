@@ -354,9 +354,10 @@ export default function QuizCreationPanel() {
       console.log('API呼び出し開始:', {
         url: 'https://m8qv314ft6.execute-api.ap-northeast-1.amazonaws.com/dev/',
         noteIds: selectedNotes,
+        note: combinedContent,
         contentLength: combinedContent.length
       })
-
+      
       // make_quiz APIを呼び出し
       const response = await fetch(
         'https://m8qv314ft6.execute-api.ap-northeast-1.amazonaws.com/dev/',
@@ -368,7 +369,7 @@ export default function QuizCreationPanel() {
           },
           body: JSON.stringify({
             note: combinedContent,
-            noteId: selectedNotes.join(','), // 複数ノートIDを結合
+            noteId: selectedNotes, // 複数ノートIDを結合
             num_questions: parseInt(questionCount),
             difficulty: difficultyMapping[difficulty] || '標準',
             question_format: formatMapping[questionType] || '選択式'
