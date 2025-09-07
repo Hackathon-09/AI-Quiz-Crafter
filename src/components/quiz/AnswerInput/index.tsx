@@ -55,9 +55,16 @@ export default function AnswerInput({
         {isAnswered && (
           <Box p={4} bg="blue.50" borderRadius="md" border="2px solid" borderColor="blue.200">
             <Text fontSize="lg" fontWeight="bold" color="blue.700" textAlign="center">
-              正解: {question.type === 'multiple-choice' && question.choices
-                ? question.choices[question.correctAnswer as number]
-                : question.correctAnswer}
+              正解: {(() => {
+                if (question.type === 'multiple-choice' && question.choices) {
+                  if (typeof question.correctAnswer === 'number') {
+                    return question.choices[question.correctAnswer]
+                  } else {
+                    return question.correctAnswer
+                  }
+                }
+                return question.correctAnswer
+              })()}
             </Text>
           </Box>
         )}
@@ -74,7 +81,9 @@ export default function AnswerInput({
         >
           <VStack gap={3} align="stretch">
             {question.choices?.map((choice, index) => {
-              const isCorrect = index === question.correctAnswer
+              const isCorrect = typeof question.correctAnswer === 'number' 
+                ? index === question.correctAnswer
+                : choice === question.correctAnswer
               const isSelected = currentAnswer === index.toString()
               
               return (

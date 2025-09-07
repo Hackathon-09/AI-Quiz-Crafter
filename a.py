@@ -3,11 +3,19 @@ import boto3
 import os
 import uuid # ユニークIDを生成するために追加
 
-# Bedrockクライアントを初期化
-bedrock_runtime = boto3.client(
-    service_name='bedrock-runtime',
-    region_name='ap-northeast-1'
-)
+# Bedrockクライアントを初期化（利用可能なリージョンを試す）
+try:
+    # まずap-northeast-1を試す
+    bedrock_runtime = boto3.client(
+        service_name='bedrock-runtime',
+        region_name='ap-northeast-1'
+    )
+except:
+    # フォールバック: us-east-1（最も多くのモデルが利用可能）
+    bedrock_runtime = boto3.client(
+        service_name='bedrock-runtime',
+        region_name='us-east-1'
+    )
 
 # DynamoDBクライアントを初期化
 dynamodb = boto3.resource('dynamodb')
@@ -66,20 +74,24 @@ def create_prompt(note_content, num_questions, difficulty, question_format):
     prompt = f"""
     あなたは優秀な教育者です。以下の学習ノートの内容に基づき、学習者が知識の定着度を確認するためのクイズを作成してください。
 
+    # 重要事項
+    - 回答は必ず有効なJSON形式で出力してください
+    - JSON以外の文字（説明文、コメント、改行等）は一切含めないでください
+    - 文字列内で改行や制御文字を使用しないでください
+
     # 指示
     - 難易度「{difficulty}」レベルの問題を「{num_questions}問」作成してください。
     {instruction}
     - 各問題には、なぜその答えになるのかの「解説」と、この問題が何を学ぶためのものかという「出題意図」を付けてください。
-    - 回答は必ず指定したJSON形式で出力してください。他のテキストは含めないでください。
 
     # 学習ノート
     ---
     {note_content}
     ---
 
-    # 出力形式 (JSON)
-    {format_example}
-    """
+    # 出力形式
+    以下の形式の有効なJSONのみを出力してください：
+    {format_example}"""
     return prompt
 
 def lambda_handler(event, context):
@@ -93,11 +105,19 @@ def lambda_handler(event, context):
         print(f"Event body type: {type(event.get('body'))}")
         print(f"Event body content: {event.get('body')}")
         
-        raw_body = event.get('body', '{}')
-        if raw_body is None:
-            raw_body = '{}'
-        
-        body = json.loads(raw_body)
+        # API Gateway統合の形式に応じて処理
+        if 'body' in event and isinstance(event['body'], str):
+            # 文字列として受信した場合
+            raw_body = event.get('body', '{}')
+            if raw_body is None:
+                raw_body = '{}'
+            body = json.loads(raw_body)
+        elif 'body' in event and isinstance(event['body'], dict):
+            # 既にオブジェクトとして受信した場合
+            body = event['body']
+        else:
+            # 直接ルートレベルにパラメータがある場合
+            body = event
         print(f"Parsed body: {json.dumps(body)}")
 
         note_content = body.get('note')
@@ -135,26 +155,68 @@ def lambda_handler(event, context):
         # Bedrockへのプロンプトを生成
         prompt = create_prompt(note_content, num_questions, difficulty, question_format)
 
-        # Bedrockモデルの呼び出し
-        response = bedrock_runtime.invoke_model(
-            modelId='anthropic.claude-3-sonnet-20240229-v1:0',
-            contentType='application/json',
-            accept='application/json',
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [{"type": "text", "text": prompt}]
-                    }
-                ]
-            })
-        )
+        # 利用可能なモデルIDを試す
+        model_ids_to_try = [
+            'anthropic.claude-3-5-sonnet-20241022-v2:0',  # 最新
+            'anthropic.claude-3-5-sonnet-20240620-v1:0',  # 利用可能
+            'anthropic.claude-3-sonnet-20240229-v1:0',    # 元のモデル
+            'anthropic.claude-3-haiku-20240307-v1:0',     # 軽量版
+        ]
+        
+        response = None
+        last_error = None
+        
+        for model_id in model_ids_to_try:
+            try:
+                print(f"Trying model: {model_id}")
+                response = bedrock_runtime.invoke_model(
+                    modelId=model_id,
+                    contentType='application/json',
+                    accept='application/json',
+                    body=json.dumps({
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens": 4096,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [{"type": "text", "text": prompt}]
+                            }
+                        ]
+                    })
+                )
+                print(f"Successfully used model: {model_id}")
+                break
+            except Exception as e:
+                print(f"Model {model_id} failed: {str(e)}")
+                last_error = e
+                continue
+        
+        if response is None:
+            raise Exception(f"All models failed. Last error: {str(last_error)}")
 
         response_body = json.loads(response['body'].read())
         quiz_json_str = response_body['content'][0]['text']
-        final_response = json.loads(quiz_json_str)
+        
+        # 制御文字を除去してJSONを清浄化
+        import re
+        cleaned_json_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', quiz_json_str)
+        
+        # JSONの開始と終了を確実に見つける
+        start_idx = cleaned_json_str.find('{')
+        end_idx = cleaned_json_str.rfind('}')
+        
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError("Valid JSON not found in response")
+        
+        json_content = cleaned_json_str[start_idx:end_idx+1]
+        print(f"Cleaned JSON content: {json_content[:500]}...")  # 最初の500文字をログ
+        
+        try:
+            final_response = json.loads(json_content)
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
+            print(f"Problematic JSON: {json_content}")
+            raise ValueError(f"Failed to parse JSON response: {str(e)}")
 
         # ★ここから追加: 生成したクイズをDynamoDBに保存
         saved_quizzies = []

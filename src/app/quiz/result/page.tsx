@@ -45,10 +45,19 @@ export default function QuizResultPage() {
         if (question.type === 'multiple-choice') {
           const answerString = Array.isArray(userAnswer) ? userAnswer[0] : userAnswer
           const answerIndex = parseInt(answerString)
-          isCorrect = answerIndex === question.correctAnswer
+          
+          // correctAnswerが数値の場合
+          if (typeof question.correctAnswer === 'number') {
+            isCorrect = answerIndex === question.correctAnswer
+          } else {
+            // correctAnswerが文字列の場合は、選択肢の中で一致するものを探す
+            const correctText = question.correctAnswer as string
+            const selectedText = question.choices?.[answerIndex]
+            isCorrect = selectedText === correctText
+          }
         } else if (question.type === 'true-false') {
           const answerString = Array.isArray(userAnswer) ? userAnswer[0] : userAnswer
-          isCorrect = answerString === question.correctAnswer
+          isCorrect = answerString === question.correctAnswer.toString()
         } else if (question.type === 'essay') {
           // 記述問題は一旦正解とする（実際はAI評価）
           const answerString = Array.isArray(userAnswer) ? userAnswer.join(' ') : userAnswer
@@ -333,9 +342,17 @@ export default function QuizResultPage() {
                         color="green.700"
                         pl={6}
                       >
-                        {detail.question.type === 'multiple-choice' && detail.question.choices
-                          ? detail.question.choices[detail.question.correctAnswer as number]
-                          : detail.question.correctAnswer}
+                        {(() => {
+                          if (detail.question.type === 'multiple-choice' && detail.question.choices) {
+                            if (typeof detail.question.correctAnswer === 'number') {
+                              return detail.question.choices[detail.question.correctAnswer]
+                            } else {
+                              // correctAnswerが文字列の場合はそのまま表示
+                              return detail.question.correctAnswer
+                            }
+                          }
+                          return detail.question.correctAnswer
+                        })()}
                       </Text>
                     </VStack>
                   </Box>
