@@ -18,6 +18,7 @@ import {
   RadioGroup,
   Portal,
   Badge,
+  Textarea,
 } from '@chakra-ui/react'
 import { useState } from 'react'
 import {
@@ -40,53 +41,81 @@ import { useEffect } from 'react'
 interface FileContentDisplayProps {
   note: Note
   fetchFileContent: (note: Note) => Promise<string>
-  loadingFileContent: {[key: string]: boolean}
+  loadingFileContent: { [key: string]: boolean }
   handleDownloadFile: (note: Note) => Promise<void>
+  isEditing?: boolean
+  editingContent?: string
+  setEditingContent?: (content: string) => void
+  editingNotionUrl?: string
+  setEditingNotionUrl?: (url: string) => void
 }
 
-function FileContentDisplay({ note, fetchFileContent, loadingFileContent, handleDownloadFile }: FileContentDisplayProps) {
+function FileContentDisplay({
+  note,
+  fetchFileContent,
+  loadingFileContent,
+  handleDownloadFile,
+  isEditing = false,
+  editingContent = '',
+  setEditingContent,
+  editingNotionUrl = '',
+  setEditingNotionUrl,
+}: FileContentDisplayProps) {
   const [displayContent, setDisplayContent] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
 
   // ファイル形式判定
   const isTextFile = (fileName?: string, contentType?: string) => {
     if (!fileName && !contentType) return false
-    
+
     const textExtensions = ['.txt', '.md', '.json', '.csv', '.log']
     const textContentTypes = ['text/', 'application/json', 'application/csv']
-    
+
     if (fileName) {
       const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
-      if (textExtensions.some(e => ext === e)) return true
+      if (textExtensions.some((e) => ext === e)) return true
     }
-    
+
     if (contentType) {
-      if (textContentTypes.some(t => contentType.startsWith(t))) return true
+      if (textContentTypes.some((t) => contentType.startsWith(t))) return true
     }
-    
+
     return false
   }
 
   const isPdfFile = (fileName?: string, contentType?: string) => {
-    return fileName?.toLowerCase().endsWith('.pdf') || 
-           contentType === 'application/pdf'
+    return (
+      fileName?.toLowerCase().endsWith('.pdf') ||
+      contentType === 'application/pdf'
+    )
   }
 
   const isWordFile = (fileName?: string, contentType?: string) => {
-    return fileName?.toLowerCase().endsWith('.docx') || 
-           contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    return (
+      fileName?.toLowerCase().endsWith('.docx') ||
+      contentType ===
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
   }
 
   const isImageFile = (fileName?: string, contentType?: string) => {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
-    
+    const imageExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.svg',
+    ]
+
     if (fileName) {
       const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
-      if (imageExtensions.some(e => ext === e)) return true
+      if (imageExtensions.some((e) => ext === e)) return true
     }
-    
+
     if (contentType?.startsWith('image/')) return true
-    
+
     return false
   }
 
@@ -108,7 +137,9 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent, handle
 
   return (
     <Box>
-      <Text fontSize="sm" fontWeight="medium" mb={2}>内容</Text>
+      <Text fontSize="sm" fontWeight="medium" mb={2}>
+        内容
+      </Text>
       <Box
         p={4}
         bg="gray.50"
@@ -122,61 +153,68 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent, handle
           <Text fontSize="sm" color="gray.500" fontStyle="italic">
             ファイル内容を読み込み中...
           </Text>
-        ) : note.sourceType === 'file' && isPdfFile(note.fileName, note.contentType) ? (
+        ) : note.sourceType === 'file' &&
+          isPdfFile(note.fileName, note.contentType) ? (
           <VStack align="center" gap={3}>
             <Text fontSize="sm" color="orange.600" fontWeight="medium">
               📄 PDFファイルです
             </Text>
             <Text fontSize="xs" color="gray.600" textAlign="center">
-              PDFファイルは直接表示できません。<br />
+              PDFファイルは直接表示できません。
+              <br />
               ブラウザで表示して閲覧してください。
             </Text>
-            <Button 
-              size="sm" 
-              colorScheme="blue" 
+            <Button
+              size="sm"
+              colorScheme="blue"
               variant="outline"
               onClick={() => handleDownloadFile(note)}
             >
               ブラウザで表示
             </Button>
           </VStack>
-        ) : note.sourceType === 'file' && isWordFile(note.fileName, note.contentType) ? (
+        ) : note.sourceType === 'file' &&
+          isWordFile(note.fileName, note.contentType) ? (
           <VStack align="center" gap={3}>
             <Text fontSize="sm" color="blue.600" fontWeight="medium">
               📝 Wordファイルです
             </Text>
             <Text fontSize="xs" color="gray.600" textAlign="center">
-              Wordファイルは直接表示できません。<br />
+              Wordファイルは直接表示できません。
+              <br />
               ブラウザで表示して閲覧してください。
             </Text>
-            <Button 
-              size="sm" 
-              colorScheme="blue" 
+            <Button
+              size="sm"
+              colorScheme="blue"
               variant="outline"
               onClick={() => handleDownloadFile(note)}
             >
               ブラウザで表示
             </Button>
           </VStack>
-        ) : note.sourceType === 'file' && isImageFile(note.fileName, note.contentType) ? (
+        ) : note.sourceType === 'file' &&
+          isImageFile(note.fileName, note.contentType) ? (
           <VStack align="center" gap={3}>
             <Text fontSize="sm" color="green.600" fontWeight="medium">
               🖼️ 画像ファイルです
             </Text>
             <Text fontSize="xs" color="gray.600" textAlign="center">
-              画像ファイルは直接表示できません。<br />
+              画像ファイルは直接表示できません。
+              <br />
               ブラウザで表示して閲覧してください。
             </Text>
-            <Button 
-              size="sm" 
-              colorScheme="green" 
+            <Button
+              size="sm"
+              colorScheme="green"
               variant="outline"
               onClick={() => handleDownloadFile(note)}
             >
               ブラウザで表示
             </Button>
           </VStack>
-        ) : note.sourceType === 'file' && !isTextFile(note.fileName, note.contentType) ? (
+        ) : note.sourceType === 'file' &&
+          !isTextFile(note.fileName, note.contentType) ? (
           <VStack align="center" gap={2}>
             <Text fontSize="sm" color="purple.600" fontWeight="medium">
               📁 {note.contentType || 'バイナリファイル'}
@@ -186,13 +224,56 @@ function FileContentDisplay({ note, fetchFileContent, loadingFileContent, handle
             </Text>
           </VStack>
         ) : (
-          <Text
-            fontSize="sm"
-            lineHeight={1.6}
-            whiteSpace="pre-wrap"
-          >
-            {displayContent || 'コンテンツがありません'}
-          </Text>
+          <>
+            {/* Notionノートの編集 */}
+            {note.sourceType === 'notion' && isEditing ? (
+              <VStack align="stretch" gap={3}>
+                <Box>
+                  <Text fontSize="sm" fontWeight="medium" mb={2}>
+                    NotionURL
+                  </Text>
+                  <Input
+                    value={editingNotionUrl}
+                    onChange={(e) => setEditingNotionUrl?.(e.target.value)}
+                    placeholder="https://notion.so/..."
+                    border="2px"
+                    borderColor="blue.300"
+                  />
+                </Box>
+                <Box>
+                  <Text fontSize="sm" fontWeight="medium" mb={2}>
+                    メモ
+                  </Text>
+                  <Textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent?.(e.target.value)}
+                    placeholder="Notionページに関するメモを入力..."
+                    minH="200px"
+                    border="2px"
+                    borderColor="blue.300"
+                    resize="vertical"
+                  />
+                </Box>
+              </VStack>
+            ) : /* テキストノートの編集 */ isEditing &&
+              note.sourceType === 'text' ? (
+              <Textarea
+                value={editingContent}
+                onChange={(e) => setEditingContent?.(e.target.value)}
+                placeholder="ノート内容を入力..."
+                minH="300px"
+                border="2px"
+                borderColor="blue.300"
+                resize="vertical"
+                fontSize="sm"
+                lineHeight={1.6}
+              />
+            ) : (
+              <Text fontSize="sm" lineHeight={1.6} whiteSpace="pre-wrap">
+                {displayContent || 'コンテンツがありません'}
+              </Text>
+            )}
+          </>
         )}
       </Box>
     </Box>
@@ -208,22 +289,29 @@ export default function NotesPage() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [tagFilterType, setTagFilterType] = useState<'or' | 'and'>('and')
-  const [fileContent, setFileContent] = useState<{[key: string]: string}>({})
-  const [loadingFileContent, setLoadingFileContent] = useState<{[key: string]: boolean}>({})
+  const [fileContent, setFileContent] = useState<{ [key: string]: string }>({})
+  const [loadingFileContent, setLoadingFileContent] = useState<{
+    [key: string]: boolean
+  }>({})
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingTitle, setEditingTitle] = useState('')
+  const [editingContent, setEditingContent] = useState('')
+  const [editingNotionUrl, setEditingNotionUrl] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
 
   // API呼び出し関数
   const fetchAllNotes = async () => {
     try {
       setLoading(true)
-      
+
       // Cognito認証セッションを取得
       const session = await fetchAuthSession()
       console.log('Auth session:', session)
-      
+
       const idToken = session.tokens?.idToken?.toString()
       console.log('ID Token exists:', !!idToken)
       console.log('ID Token (first 20 chars):', idToken?.substring(0, 20))
-      
+
       if (!idToken) {
         console.error('Authentication required - no ID token')
         alert('認証が必要です。再度ログインしてください。')
@@ -232,7 +320,7 @@ export default function NotesPage() {
       }
 
       console.log('Making API request to notes endpoint...')
-      
+
       // API Gateway経由で全てのノートを取得
       const response = await fetch(
         'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/notes',
@@ -240,25 +328,28 @@ export default function NotesPage() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
+            Authorization: `Bearer ${idToken}`,
           },
         }
       )
 
       console.log('API response status:', response.status)
-      console.log('API response headers:', Object.fromEntries(response.headers.entries()))
+      console.log(
+        'API response headers:',
+        Object.fromEntries(response.headers.entries())
+      )
 
       if (response.ok) {
         const responseText = await response.text()
         console.log('Raw API response:', responseText)
-        
+
         try {
           const fetchedNotes = JSON.parse(responseText)
           console.log('Parsed notes:', fetchedNotes)
           console.log('Notes type:', typeof fetchedNotes)
           console.log('Is array:', Array.isArray(fetchedNotes))
           console.log('Notes length:', fetchedNotes?.length)
-          
+
           if (Array.isArray(fetchedNotes)) {
             setNotes(fetchedNotes)
           } else {
@@ -293,17 +384,24 @@ export default function NotesPage() {
 
   // ファイルダウンロード用のPresigned URL取得関数
   const getDownloadUrl = async (note: Note): Promise<string | null> => {
-    console.log('Getting download URL for note:', { fileName: note.fileName, s3Path: note.s3Path, sourceType: note.sourceType })
-    
+    console.log('Getting download URL for note:', {
+      fileName: note.fileName,
+      s3Path: note.s3Path,
+      sourceType: note.sourceType,
+    })
+
     if (!note.s3Path || note.sourceType !== 'file') {
-      console.log('Invalid note for download:', { s3Path: note.s3Path, sourceType: note.sourceType })
+      console.log('Invalid note for download:', {
+        s3Path: note.s3Path,
+        sourceType: note.sourceType,
+      })
       return null
     }
 
     try {
       const session = await fetchAuthSession()
       const idToken = session.tokens?.idToken?.toString()
-      
+
       if (!idToken) {
         console.error('Authentication required for download')
         return null
@@ -313,7 +411,7 @@ export default function NotesPage() {
         fileName: note.fileName || '',
         contentType: note.contentType || 'application/octet-stream',
         s3Key: note.s3Path,
-        operation: 'download'
+        operation: 'download',
       }
       console.log('Download API request body:', requestBody)
 
@@ -323,14 +421,14 @@ export default function NotesPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
+            Authorization: `Bearer ${idToken}`,
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify(requestBody),
         }
       )
 
       console.log('Download API response status:', response.status)
-      
+
       if (response.ok) {
         const data = await response.json()
         console.log('Download API response data:', data)
@@ -339,7 +437,7 @@ export default function NotesPage() {
         const errorText = await response.text()
         console.error('Download API error:', response.status, errorText)
       }
-      
+
       return null
     } catch (error) {
       console.error('Error getting download URL:', error)
@@ -350,11 +448,11 @@ export default function NotesPage() {
   // ファイルダウンロード実行関数
   const handleDownloadFile = async (note: Note) => {
     console.log('Download clicked for note:', note)
-    
+
     try {
       const downloadUrl = await getDownloadUrl(note)
       console.log('Download URL received:', downloadUrl)
-      
+
       if (downloadUrl) {
         const link = document.createElement('a')
         link.href = downloadUrl
@@ -379,7 +477,7 @@ export default function NotesPage() {
     if (!note.s3Path || note.sourceType !== 'file') {
       return ''
     }
-    
+
     if (fileContent[note.s3Path]) {
       return fileContent[note.s3Path]
     }
@@ -389,11 +487,11 @@ export default function NotesPage() {
     }
 
     try {
-      setLoadingFileContent(prev => ({...prev, [note.s3Path!]: true}))
-      
+      setLoadingFileContent((prev) => ({ ...prev, [note.s3Path!]: true }))
+
       const session = await fetchAuthSession()
       const idToken = session.tokens?.idToken?.toString()
-      
+
       if (!idToken) {
         return 'ファイル内容の取得には認証が必要です'
       }
@@ -404,21 +502,21 @@ export default function NotesPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
+            Authorization: `Bearer ${idToken}`,
           },
           body: JSON.stringify({
             fileName: note.fileName || '',
             contentType: note.contentType || 'application/octet-stream',
             s3Key: note.s3Path,
-            operation: 'download'
-          })
+            operation: 'download',
+          }),
         }
       )
 
       if (response.ok) {
         const data = await response.json()
         console.log('Presigned URL response:', data)
-        
+
         const downloadUrl = data.downloadUrl || data.uploadUrl
         if (!downloadUrl) {
           console.error('No download URL found in response:', data)
@@ -426,28 +524,144 @@ export default function NotesPage() {
         }
         const fileResponse = await fetch(downloadUrl)
         console.log('File fetch response status:', fileResponse.status)
-        
+
         if (fileResponse.ok) {
           const content = await fileResponse.text()
           console.log('File content length:', content.length)
-          setFileContent(prev => ({...prev, [note.s3Path!]: content}))
+          setFileContent((prev) => ({ ...prev, [note.s3Path!]: content }))
           return content
         } else {
-          console.error('Failed to fetch file from S3:', fileResponse.status, fileResponse.statusText)
+          console.error(
+            'Failed to fetch file from S3:',
+            fileResponse.status,
+            fileResponse.statusText
+          )
           return `ファイル取得エラー: ${fileResponse.status} ${fileResponse.statusText}`
         }
       } else {
         const errorText = await response.text()
-        console.error('Failed to get presigned URL:', response.status, errorText)
+        console.error(
+          'Failed to get presigned URL:',
+          response.status,
+          errorText
+        )
         return `Presigned URL取得エラー: ${response.status}`
       }
-      
+
       return 'ファイル内容の取得に失敗しました'
     } catch (error) {
       console.error('Error fetching file content:', error)
       return 'ファイル内容の取得中にエラーが発生しました'
     } finally {
-      setLoadingFileContent(prev => ({...prev, [note.s3Path!]: false}))
+      setLoadingFileContent((prev) => ({ ...prev, [note.s3Path!]: false }))
+    }
+  }
+
+  // 編集を開始する関数
+  const startEditing = (note: Note) => {
+    if (note.sourceType === 'file') {
+      alert('ファイルノートは編集できません')
+      return
+    }
+
+    setIsEditing(true)
+    setEditingTitle(note.title)
+    setEditingContent(note.content || '')
+    setEditingNotionUrl(note.notionUrl || '')
+  }
+
+  // 編集をキャンセルする関数
+  const cancelEditing = () => {
+    setIsEditing(false)
+    setEditingTitle('')
+    setEditingContent('')
+    setEditingNotionUrl('')
+  }
+
+  // ノートを更新する関数
+  const updateNote = async () => {
+    if (!selectedNote) return
+
+    try {
+      setIsUpdating(true)
+
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+
+      if (!idToken) {
+        alert('認証が必要です')
+        return
+      }
+
+      const updateData: {
+        noteId: string
+        title: string
+        content?: string
+        notionUrl?: string
+      } = {
+        noteId: selectedNote.noteId || selectedNote.id,
+        title: editingTitle,
+      }
+
+      if (selectedNote.sourceType === 'text') {
+        updateData.content = editingContent
+      } else if (selectedNote.sourceType === 'notion') {
+        updateData.notionUrl = editingNotionUrl
+      }
+
+      console.log('Updating note:', updateData)
+
+      const response = await fetch(
+        'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/notes',
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify(updateData),
+        }
+      )
+
+      if (response.ok) {
+        console.log('Note updated successfully')
+
+        // ローカル状態を更新
+        const updatedNote = { ...selectedNote }
+        updatedNote.title = editingTitle
+        if (selectedNote.sourceType === 'text') {
+          updatedNote.content = editingContent
+        } else if (selectedNote.sourceType === 'notion') {
+          updatedNote.notionUrl = editingNotionUrl
+        }
+
+        setNotes((prevNotes) =>
+          prevNotes.map((note) =>
+            (note.noteId || note.id) ===
+            (selectedNote.noteId || selectedNote.id)
+              ? updatedNote
+              : note
+          )
+        )
+        setSelectedNote(updatedNote)
+
+        // 編集モードを終了
+        setIsEditing(false)
+        setEditingTitle('')
+        setEditingContent('')
+        setEditingNotionUrl('')
+
+        alert('ノートが更新されました')
+      } else {
+        const errorText = await response.text()
+        console.error('Failed to update note:', response.status, errorText)
+        alert('ノートの更新に失敗しました')
+      }
+    } catch (error) {
+      console.error('Error updating note:', error)
+      alert('更新中にエラーが発生しました')
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -475,7 +689,8 @@ export default function NotesPage() {
     .filter((note) => {
       const searchMatch =
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+        (note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+          false)
 
       if (selectedTags.length === 0) {
         return searchMatch
@@ -492,7 +707,8 @@ export default function NotesPage() {
     .sort((a, b) => {
       let comparison = 0
       if (sortBy === 'createdAt') {
-        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        comparison =
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
       if (sortBy === 'title') {
         comparison = a.title.localeCompare(b.title)
@@ -503,13 +719,15 @@ export default function NotesPage() {
   const handleDeleteNote = async (noteId: string) => {
     try {
       // 削除確認
-      const confirmed = window.confirm('このノートを削除しますか？この操作は元に戻せません。')
+      const confirmed = window.confirm(
+        'このノートを削除しますか？この操作は元に戻せません。'
+      )
       if (!confirmed) return
 
       // Cognito認証セッションを取得
       const session = await fetchAuthSession()
       const idToken = session.tokens?.idToken?.toString()
-      
+
       if (!idToken) {
         alert('認証が必要です')
         return
@@ -524,7 +742,7 @@ export default function NotesPage() {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
+            Authorization: `Bearer ${idToken}`,
           },
         }
       )
@@ -532,8 +750,13 @@ export default function NotesPage() {
       if (response.ok) {
         console.log('Note deleted successfully')
         // ローカル状態からも削除
-        setNotes(prevNotes => prevNotes.filter(note => (note.noteId || note.id) !== noteId))
-        if (selectedNote && (selectedNote.noteId || selectedNote.id) === noteId) {
+        setNotes((prevNotes) =>
+          prevNotes.filter((note) => (note.noteId || note.id) !== noteId)
+        )
+        if (
+          selectedNote &&
+          (selectedNote.noteId || selectedNote.id) === noteId
+        ) {
           setSelectedNote(null)
         }
         alert('ノートが削除されました')
@@ -614,10 +837,16 @@ export default function NotesPage() {
                   <Button
                     size="md"
                     variant="outline"
-                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    onClick={() =>
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                    }
                     minW="50px"
                   >
-                    {sortOrder === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
+                    {sortOrder === 'desc' ? (
+                      <FaSortAmountDown />
+                    ) : (
+                      <FaSortAmountUp />
+                    )}
                   </Button>
                 </HStack>
 
@@ -699,39 +928,50 @@ export default function NotesPage() {
                         transform: 'translateY(-1px)',
                       }}
                       onClick={() => setSelectedNote(note)}
-                      bg={(selectedNote?.noteId || selectedNote?.id) === (note.noteId || note.id) ? 'purple.50' : 'white'}
+                      bg={
+                        (selectedNote?.noteId || selectedNote?.id) ===
+                        (note.noteId || note.id)
+                          ? 'purple.50'
+                          : 'white'
+                      }
                       border="1px"
                       borderColor={
-                        (selectedNote?.noteId || selectedNote?.id) === (note.noteId || note.id) ? 'purple.200' : 'gray.200'
+                        (selectedNote?.noteId || selectedNote?.id) ===
+                        (note.noteId || note.id)
+                          ? 'purple.200'
+                          : 'gray.200'
                       }
                     >
-                        <VStack align="start" gap={2} flex={1}>
-                          <Text fontSize="md" fontWeight="bold" truncate>
-                            {note.title}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600" lineClamp={2}>
-                            {(() => {
-                              if (note.content === undefined || note.content === null) {
-                                return 'コンテンツなし'
-                              }
-                              return note.content.length > 150 
-                                ? `${note.content.substring(0, 150)}...`
-                                : note.content
-                            })()}
-                          </Text>
-                          <Text fontSize="xs" color="gray.400">
-                            {new Date(note.createdAt).toLocaleDateString(
-                              'ja-JP',
-                              {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }
-                            )}
-                          </Text>
-                        </VStack>
+                      <VStack align="start" gap={2} flex={1}>
+                        <Text fontSize="md" fontWeight="bold" truncate>
+                          {note.title}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600" lineClamp={2}>
+                          {(() => {
+                            if (
+                              note.content === undefined ||
+                              note.content === null
+                            ) {
+                              return 'コンテンツなし'
+                            }
+                            return note.content.length > 150
+                              ? `${note.content.substring(0, 150)}...`
+                              : note.content
+                          })()}
+                        </Text>
+                        <Text fontSize="xs" color="gray.400">
+                          {new Date(note.createdAt).toLocaleDateString(
+                            'ja-JP',
+                            {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }
+                          )}
+                        </Text>
+                      </VStack>
                     </Card.Root>
                   ))
                 )}
@@ -746,9 +986,22 @@ export default function NotesPage() {
             {selectedNote ? (
               <VStack gap={4} align="stretch" h="full">
                 <Box>
-                  <Heading size="lg" mb={3}>
-                    {selectedNote.title}
-                  </Heading>
+                  {isEditing ? (
+                    <Input
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      fontSize="lg"
+                      fontWeight="bold"
+                      border="2px"
+                      borderColor="blue.300"
+                      mb={3}
+                      placeholder="ノートのタイトル"
+                    />
+                  ) : (
+                    <Heading size="lg" mb={3}>
+                      {selectedNote.title}
+                    </Heading>
+                  )}
                   <Text fontSize="sm" color="gray.500" mb={4}>
                     作成日:{' '}
                     {new Date(selectedNote.createdAt).toLocaleDateString(
@@ -765,14 +1018,20 @@ export default function NotesPage() {
                 </Box>
 
                 {/* メタ情報 */}
-                {(selectedNote.sourceType || selectedNote.fileName || selectedNote.tags) && (
+                {(selectedNote.sourceType ||
+                  selectedNote.fileName ||
+                  selectedNote.tags) && (
                   <VStack align="stretch" gap={3}>
                     <HStack gap={4} flexWrap="wrap">
                       {selectedNote.sourceType && (
                         <Badge colorScheme="blue">
-                          {selectedNote.sourceType === 'text' ? 'テキスト' : 
-                           selectedNote.sourceType === 'file' ? 'ファイル' : 
-                           selectedNote.sourceType === 'notion' ? 'Notion' : selectedNote.sourceType}
+                          {selectedNote.sourceType === 'text'
+                            ? 'テキスト'
+                            : selectedNote.sourceType === 'file'
+                              ? 'ファイル'
+                              : selectedNote.sourceType === 'notion'
+                                ? 'Notion'
+                                : selectedNote.sourceType}
                         </Badge>
                       )}
                     </HStack>
@@ -780,10 +1039,14 @@ export default function NotesPage() {
                     {/* タグ */}
                     {selectedNote.tags && selectedNote.tags.length > 0 && (
                       <Box>
-                        <Text fontSize="sm" fontWeight="medium" mb={2}>タグ</Text>
+                        <Text fontSize="sm" fontWeight="medium" mb={2}>
+                          タグ
+                        </Text>
                         <HStack gap={2} flexWrap="wrap">
                           {selectedNote.tags.map((tag, index) => (
-                            <Badge key={index} colorScheme="purple">{tag}</Badge>
+                            <Badge key={index} colorScheme="purple">
+                              {tag}
+                            </Badge>
                           ))}
                         </HStack>
                       </Box>
@@ -792,65 +1055,105 @@ export default function NotesPage() {
                 )}
 
                 {/* ファイル情報 */}
-                {selectedNote.sourceType === 'file' && selectedNote.fileName && (
-                  <Box>
-                    <Text fontSize="sm" fontWeight="medium" mb={2}>ファイル情報</Text>
-                    <HStack gap={4}>
-                      <Text fontSize="sm" color="gray.600">
-                        ファイル名: {selectedNote.fileName}
+                {selectedNote.sourceType === 'file' &&
+                  selectedNote.fileName && (
+                    <Box>
+                      <Text fontSize="sm" fontWeight="medium" mb={2}>
+                        ファイル情報
                       </Text>
-                      {selectedNote.fileSize && (
+                      <HStack gap={4}>
                         <Text fontSize="sm" color="gray.600">
-                          サイズ: {(selectedNote.fileSize / 1024).toFixed(1)}KB
+                          ファイル名: {selectedNote.fileName}
                         </Text>
-                      )}
-                    </HStack>
-                  </Box>
-                )}
+                        {selectedNote.fileSize && (
+                          <Text fontSize="sm" color="gray.600">
+                            サイズ: {(selectedNote.fileSize / 1024).toFixed(1)}
+                            KB
+                          </Text>
+                        )}
+                      </HStack>
+                    </Box>
+                  )}
 
                 {/* Notion情報 */}
-                {selectedNote.sourceType === 'notion' && selectedNote.notionUrl && (
-                  <Box>
-                    <Text fontSize="sm" fontWeight="medium" mb={2}>Notion情報</Text>
-                    <Text fontSize="sm" color="blue.500" wordBreak="break-all">
-                      {selectedNote.notionUrl}
-                    </Text>
-                  </Box>
-                )}
+                {selectedNote.sourceType === 'notion' &&
+                  selectedNote.notionUrl && (
+                    <Box>
+                      <Text fontSize="sm" fontWeight="medium" mb={2}>
+                        Notion情報
+                      </Text>
+                      <Text
+                        fontSize="sm"
+                        color="blue.500"
+                        wordBreak="break-all"
+                      >
+                        {selectedNote.notionUrl}
+                      </Text>
+                    </Box>
+                  )}
 
                 {/* コンテンツ表示 */}
                 <Box flex={1}>
-                  <FileContentDisplay 
-                    note={selectedNote} 
+                  <FileContentDisplay
+                    note={selectedNote}
                     fetchFileContent={fetchFileContent}
                     loadingFileContent={loadingFileContent}
                     handleDownloadFile={handleDownloadFile}
+                    isEditing={isEditing}
+                    editingContent={editingContent}
+                    setEditingContent={setEditingContent}
+                    editingNotionUrl={editingNotionUrl}
+                    setEditingNotionUrl={setEditingNotionUrl}
                   />
                 </Box>
 
                 <HStack gap={2}>
-                  <Button
-                    colorScheme="blue"
-                    onClick={() => {
-                      // TODO: 編集機能を実装
-                      console.log('Edit note:', selectedNote.noteId || selectedNote.id)
-                    }}
-                    flex={1}
-                  >
-                    <FaEdit />
-                    編集
-                  </Button>
-                  <Button
-                    colorScheme="red"
-                    variant="outline"
-                    onClick={() => {
-                      handleDeleteNote(selectedNote.noteId || selectedNote.id)
-                    }}
-                    flex={1}
-                  >
-                    <FaTrash />
-                    削除
-                  </Button>
+                  {isEditing ? (
+                    <>
+                      <Button
+                        colorScheme="blue"
+                        onClick={updateNote}
+                        flex={1}
+                        loading={isUpdating}
+                        disabled={!editingTitle.trim()}
+                      >
+                        保存
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={cancelEditing}
+                        flex={1}
+                        disabled={isUpdating}
+                      >
+                        キャンセル
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        colorScheme="blue"
+                        onClick={() => startEditing(selectedNote)}
+                        flex={1}
+                        disabled={selectedNote.sourceType === 'file'}
+                      >
+                        <FaEdit />
+                        編集
+                      </Button>
+                      <Button
+                        colorScheme="red"
+                        variant="outline"
+                        onClick={() => {
+                          handleDeleteNote(
+                            selectedNote.noteId || selectedNote.id
+                          )
+                        }}
+                        flex={1}
+                      >
+                        <FaTrash />
+                        削除
+                      </Button>
+                    </>
+                  )}
                 </HStack>
               </VStack>
             ) : (
