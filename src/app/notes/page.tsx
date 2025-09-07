@@ -34,192 +34,8 @@ import { Note } from '@/types'
 import { createListCollection } from '@chakra-ui/react'
 import { fetchAuthSession } from 'aws-amplify/auth'
 import { useEffect } from 'react'
+import FilePreview from '@/components/shared/FilePreview'
 
-// ファイル内容表示コンポーネント
-interface FileContentDisplayProps {
-  note: Note
-  fetchFileContent: (note: Note) => Promise<string>
-  loadingFileContent: { [key: string]: boolean }
-  handleDownloadFile: (note: Note) => Promise<void>
-}
-
-function FileContentDisplay({
-  note,
-  fetchFileContent,
-  loadingFileContent,
-  handleDownloadFile,
-}: FileContentDisplayProps) {
-  const [displayContent, setDisplayContent] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(false)
-
-  // ファイル形式判定
-  const isTextFile = (fileName?: string, contentType?: string) => {
-    if (!fileName && !contentType) return false
-
-    const textExtensions = ['.txt', '.md', '.json', '.csv', '.log']
-    const textContentTypes = ['text/', 'application/json', 'application/csv']
-
-    if (fileName) {
-      const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
-      if (textExtensions.some((e) => ext === e)) return true
-    }
-
-    if (contentType) {
-      if (textContentTypes.some((t) => contentType.startsWith(t))) return true
-    }
-
-    return false
-  }
-
-  const isPdfFile = (fileName?: string, contentType?: string) => {
-    return (
-      fileName?.toLowerCase().endsWith('.pdf') ||
-      contentType === 'application/pdf'
-    )
-  }
-
-  const isWordFile = (fileName?: string, contentType?: string) => {
-    return (
-      fileName?.toLowerCase().endsWith('.docx') ||
-      contentType ===
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
-  }
-
-  const isImageFile = (fileName?: string, contentType?: string) => {
-    const imageExtensions = [
-      '.jpg',
-      '.jpeg',
-      '.png',
-      '.gif',
-      '.bmp',
-      '.webp',
-      '.svg',
-    ]
-
-    if (fileName) {
-      const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
-      if (imageExtensions.some((e) => ext === e)) return true
-    }
-
-    if (contentType?.startsWith('image/')) return true
-
-    return false
-  }
-
-  useEffect(() => {
-    if (note.sourceType === 'file' && note.s3Path) {
-      setIsLoading(true)
-      fetchFileContent(note).then((content) => {
-        setDisplayContent(content)
-        setIsLoading(false)
-      })
-    } else if (note.content) {
-      setDisplayContent(note.content)
-    }
-  }, [note, fetchFileContent])
-
-  if (!note.content && note.sourceType !== 'file') {
-    return null
-  }
-
-  return (
-    <Box>
-      <Text fontSize="sm" fontWeight="medium" mb={2}>
-        内容
-      </Text>
-      <Box
-        p={4}
-        bg="gray.50"
-        borderRadius="md"
-        maxH="400px"
-        overflowY="auto"
-        border="1px"
-        borderColor="gray.200"
-      >
-        {isLoading || (note.s3Path && loadingFileContent[note.s3Path]) ? (
-          <Text fontSize="sm" color="gray.500" fontStyle="italic">
-            ファイル内容を読み込み中...
-          </Text>
-        ) : note.sourceType === 'file' &&
-          isPdfFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={3}>
-            <Text fontSize="sm" color="orange.600" fontWeight="medium">
-              📄 PDFファイルです
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              PDFファイルは直接表示できません。
-              <br />
-              ブラウザで表示して閲覧してください。
-            </Text>
-            <Button
-              size="sm"
-              colorScheme="blue"
-              variant="outline"
-              onClick={() => handleDownloadFile(note)}
-            >
-              ブラウザで表示
-            </Button>
-          </VStack>
-        ) : note.sourceType === 'file' &&
-          isWordFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={3}>
-            <Text fontSize="sm" color="blue.600" fontWeight="medium">
-              📝 Wordファイルです
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              Wordファイルは直接表示できません。
-              <br />
-              ブラウザで表示して閲覧してください。
-            </Text>
-            <Button
-              size="sm"
-              colorScheme="blue"
-              variant="outline"
-              onClick={() => handleDownloadFile(note)}
-            >
-              ブラウザで表示
-            </Button>
-          </VStack>
-        ) : note.sourceType === 'file' &&
-          isImageFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={3}>
-            <Text fontSize="sm" color="green.600" fontWeight="medium">
-              🖼️ 画像ファイルです
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              画像ファイルは直接表示できません。
-              <br />
-              ブラウザで表示して閲覧してください。
-            </Text>
-            <Button
-              size="sm"
-              colorScheme="green"
-              variant="outline"
-              onClick={() => handleDownloadFile(note)}
-            >
-              ブラウザで表示
-            </Button>
-          </VStack>
-        ) : note.sourceType === 'file' &&
-          !isTextFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={2}>
-            <Text fontSize="sm" color="purple.600" fontWeight="medium">
-              📁 {note.contentType || 'バイナリファイル'}
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              このファイル形式は直接表示できません。
-            </Text>
-          </VStack>
-        ) : (
-          <Text fontSize="sm" lineHeight={1.6} whiteSpace="pre-wrap">
-            {displayContent || 'コンテンツがありません'}
-          </Text>
-        )}
-      </Box>
-    </Box>
-  )
-}
 
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([])
@@ -616,7 +432,7 @@ export default function NotesPage() {
       >
         {/* 左カラム: ノート一覧 */}
         <GridItem>
-          <VStack gap={4} align="stretch">
+          <VStack gap={4} align="stretch" h="full">
             {/* 検索・フィルター */}
             <Card.Root p={4}>
               <VStack gap={3} align="stretch">
@@ -731,7 +547,7 @@ export default function NotesPage() {
             </Card.Root>
 
             {/* ノート一覧 */}
-            <Box maxH="600px" overflowY="auto">
+            <Box flex={1} overflowY="auto">
               <VStack gap={2} align="stretch">
                 {filteredNotes.length === 0 ? (
                   <Card.Root p={6} textAlign="center">
@@ -826,65 +642,68 @@ export default function NotesPage() {
         </GridItem>
 
         {/* 右カラム: 選択されたノートの詳細 */}
-        <GridItem>
-          <Card.Root p={6} h="full">
+        <GridItem position="sticky" top="calc(60px + 1rem)" alignSelf="start">
+          <Card.Root p={6} maxH="calc(100vh - 120px)" overflowY="auto">
             {selectedNote ? (
               <VStack gap={4} align="stretch" h="full">
                 <Box>
-                  <Heading size="lg" mb={3}>
-                    {selectedNote.title}
-                  </Heading>
-                  <Text fontSize="sm" color="gray.500" mb={4}>
-                    作成日:{' '}
-                    {new Date(selectedNote.createdAt).toLocaleDateString(
-                      'ja-JP',
-                      {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }
+                  <HStack justify="space-between" align="center" mb={3}>
+                    <Heading size="lg" flex={1} pr={4}>
+                      {selectedNote.title}
+                    </Heading>
+                    {selectedNote.sourceType && (
+                      <Badge 
+                        colorScheme="blue" 
+                        variant="outline"
+                        borderStyle="solid"
+                        borderWidth="1px"
+                        fontWeight="semibold"
+                        flexShrink={0}
+                      >
+                        📄 {selectedNote.sourceType === 'text'
+                          ? 'テキスト'
+                          : selectedNote.sourceType === 'file'
+                            ? 'ファイル'
+                            : selectedNote.sourceType === 'notion'
+                              ? 'Notion'
+                              : selectedNote.sourceType}
+                      </Badge>
                     )}
-                  </Text>
+                  </HStack>
+                  <HStack justify="space-between" align="center" flexWrap="wrap">
+                    <Text fontSize="sm" color="gray.500">
+                      作成日:{' '}
+                      {new Date(selectedNote.createdAt).toLocaleDateString(
+                        'ja-JP',
+                        {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }
+                      )}
+                    </Text>
+                    {/* タグを右側に配置 */}
+                    {selectedNote.tags && selectedNote.tags.length > 0 && (
+                      <HStack gap={2} flexWrap="wrap">
+                        {selectedNote.tags.map((tag, index) => (
+                          <Badge 
+                            key={index} 
+                            colorScheme="purple" 
+                            variant="solid"
+                            borderRadius="full"
+                            px={3}
+                            size="sm"
+                          >
+                            🏷️ {tag}
+                          </Badge>
+                        ))}
+                      </HStack>
+                    )}
+                  </HStack>
                 </Box>
 
-                {/* メタ情報 */}
-                {(selectedNote.sourceType ||
-                  selectedNote.fileName ||
-                  selectedNote.tags) && (
-                  <VStack align="stretch" gap={3}>
-                    <HStack gap={4} flexWrap="wrap">
-                      {selectedNote.sourceType && (
-                        <Badge colorScheme="blue">
-                          {selectedNote.sourceType === 'text'
-                            ? 'テキスト'
-                            : selectedNote.sourceType === 'file'
-                              ? 'ファイル'
-                              : selectedNote.sourceType === 'notion'
-                                ? 'Notion'
-                                : selectedNote.sourceType}
-                        </Badge>
-                      )}
-                    </HStack>
-
-                    {/* タグ */}
-                    {selectedNote.tags && selectedNote.tags.length > 0 && (
-                      <Box>
-                        <Text fontSize="sm" fontWeight="medium" mb={2}>
-                          タグ
-                        </Text>
-                        <HStack gap={2} flexWrap="wrap">
-                          {selectedNote.tags.map((tag, index) => (
-                            <Badge key={index} colorScheme="purple">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </HStack>
-                      </Box>
-                    )}
-                  </VStack>
-                )}
 
                 {/* ファイル情報 */}
                 {selectedNote.sourceType === 'file' &&
@@ -926,11 +745,13 @@ export default function NotesPage() {
 
                 {/* コンテンツ表示 */}
                 <Box flex={1}>
-                  <FileContentDisplay
+                  <FilePreview
                     note={selectedNote}
                     fetchFileContent={fetchFileContent}
                     loadingFileContent={loadingFileContent}
                     handleDownloadFile={handleDownloadFile}
+                    maxHeight="400px"
+                    showFileName={false}
                   />
                 </Box>
 
