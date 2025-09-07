@@ -391,17 +391,17 @@ export default function NoteListSection() {
                   shadow="sm"
                 >
                   <HStack justify="space-between">
-                    <VStack align="start" gap={1} flex={1}>
-                      <Text fontSize="sm" fontWeight="medium" truncate>
+                    <VStack align="start" gap={1} flex={1} minW={0}>
+                      <Text fontSize="sm" fontWeight="medium" noOfLines={1} wordBreak="break-word">
                         {note.title}
                       </Text>
-                      <Text fontSize="xs" color="gray.600" lineClamp={2}>
+                      <Text fontSize="xs" color="gray.600" lineClamp={2} wordBreak="break-word">
                         {(() => {
                           if (note.content === undefined || note.content === null) {
                             return 'コンテンツなし'
                           }
-                          return note.content.length > 100 
-                            ? `${note.content.substring(0, 100)}...`
+                          return note.content.length > 60 
+                            ? `${note.content.substring(0, 60)}...`
                             : note.content
                         })()}
                       </Text>

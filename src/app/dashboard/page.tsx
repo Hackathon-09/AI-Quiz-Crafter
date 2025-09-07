@@ -9,7 +9,7 @@ import { mockNotes } from '@/data/mockNotes'
 
 export default function DashboardPage() {
   return (
-    <Container maxW="container.xl" py={{ base: 4, md: 6 }}>
+    <Container maxW="container.xl" py={{ base: 4, md: 6 }} px={{ base: 3, md: 4 }}>
       <Heading mb={{ base: 4, md: 6 }} size={{ base: "lg", md: "xl" }}>
         ダッシュボード
       </Heading>
@@ -19,8 +19,8 @@ export default function DashboardPage() {
         <Grid 
           templateColumns={{ 
             base: "1fr", 
-            md: "1fr 1fr",
-            lg: "1fr 1fr 1fr" 
+            md: "1.2fr 0.8fr",
+            lg: "1.2fr 0.8fr 1fr" 
           }}
           gap={{ base: 4, md: 6 }} 
           alignItems="stretch"
