@@ -365,7 +365,7 @@ export default function QuizCreationPanel() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': idToken,
+            'Authorization': `Bearer ${idToken}`,
           },
           body: JSON.stringify({
             note: combinedContent,
