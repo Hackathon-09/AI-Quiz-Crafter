@@ -21,169 +21,7 @@ import { FaTrash, FaFileAlt, FaList, FaSync } from 'react-icons/fa'
 import { Note } from '@/types'
 import { useRouter } from 'next/navigation'
 import { fetchAuthSession } from 'aws-amplify/auth'
-
-// ファイル内容表示コンポーネント
-interface FileContentDisplayProps {
-  note: Note
-  fetchFileContent: (note: Note) => Promise<string>
-  loadingFileContent: {[key: string]: boolean}
-  handleDownloadFile: (note: Note) => Promise<void>
-}
-
-function FileContentDisplay({ note, fetchFileContent, loadingFileContent, handleDownloadFile }: FileContentDisplayProps) {
-  const [displayContent, setDisplayContent] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(false)
-
-  // ファイル形式判定
-  const isTextFile = (fileName?: string, contentType?: string) => {
-    if (!fileName && !contentType) return false
-    
-    const textExtensions = ['.txt', '.md', '.json', '.csv', '.log']
-    const textContentTypes = ['text/', 'application/json', 'application/csv']
-    
-    if (fileName) {
-      const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
-      if (textExtensions.some(e => ext === e)) return true
-    }
-    
-    if (contentType) {
-      if (textContentTypes.some(t => contentType.startsWith(t))) return true
-    }
-    
-    return false
-  }
-
-  const isPdfFile = (fileName?: string, contentType?: string) => {
-    return fileName?.toLowerCase().endsWith('.pdf') || 
-           contentType === 'application/pdf'
-  }
-
-  const isWordFile = (fileName?: string, contentType?: string) => {
-    return fileName?.toLowerCase().endsWith('.docx') || 
-           contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  }
-
-  const isImageFile = (fileName?: string, contentType?: string) => {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
-    
-    if (fileName) {
-      const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
-      if (imageExtensions.some(e => ext === e)) return true
-    }
-    
-    if (contentType?.startsWith('image/')) return true
-    
-    return false
-  }
-
-  useEffect(() => {
-    if (note.sourceType === 'file' && note.s3Path) {
-      setIsLoading(true)
-      fetchFileContent(note).then((content) => {
-        setDisplayContent(content)
-        setIsLoading(false)
-      })
-    } else if (note.content) {
-      setDisplayContent(note.content)
-    }
-  }, [note, fetchFileContent])
-
-  if (!note.content && note.sourceType !== 'file') {
-    return null
-  }
-
-  return (
-    <Box>
-      <Text fontSize="sm" fontWeight="medium" mb={2}>内容</Text>
-      <Box
-        p={4}
-        bg="gray.50"
-        borderRadius="md"
-        maxH="400px"
-        overflowY="auto"
-        border="1px"
-        borderColor="gray.200"
-      >
-        {isLoading || (note.s3Path && loadingFileContent[note.s3Path]) ? (
-          <Text fontSize="sm" color="gray.500" fontStyle="italic">
-            ファイル内容を読み込み中...
-          </Text>
-        ) : note.sourceType === 'file' && isPdfFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={3}>
-            <Text fontSize="sm" color="orange.600" fontWeight="medium">
-              📄 PDFファイルです
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              PDFファイルは直接表示できません。<br />
-              ブラウザで表示して閲覧してください。
-            </Text>
-            <Button 
-              size="sm" 
-              colorScheme="blue" 
-              variant="outline"
-              onClick={() => handleDownloadFile(note)}
-            >
-              ブラウザで表示
-            </Button>
-          </VStack>
-        ) : note.sourceType === 'file' && isWordFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={3}>
-            <Text fontSize="sm" color="blue.600" fontWeight="medium">
-              📝 Wordファイルです
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              Wordファイルは直接表示できません。<br />
-              ブラウザで表示して閲覧してください。
-            </Text>
-            <Button 
-              size="sm" 
-              colorScheme="blue" 
-              variant="outline"
-              onClick={() => handleDownloadFile(note)}
-            >
-              ブラウザで表示
-            </Button>
-          </VStack>
-        ) : note.sourceType === 'file' && isImageFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={3}>
-            <Text fontSize="sm" color="green.600" fontWeight="medium">
-              🖼️ 画像ファイルです
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              画像ファイルは直接表示できません。<br />
-              ブラウザで表示して閲覧してください。
-            </Text>
-            <Button 
-              size="sm" 
-              colorScheme="green" 
-              variant="outline"
-              onClick={() => handleDownloadFile(note)}
-            >
-              ブラウザで表示
-            </Button>
-          </VStack>
-        ) : note.sourceType === 'file' && !isTextFile(note.fileName, note.contentType) ? (
-          <VStack align="center" gap={2}>
-            <Text fontSize="sm" color="purple.600" fontWeight="medium">
-              📁 {note.contentType || 'バイナリファイル'}
-            </Text>
-            <Text fontSize="xs" color="gray.600" textAlign="center">
-              このファイル形式は直接表示できません。
-            </Text>
-          </VStack>
-        ) : (
-          <Text
-            fontSize="sm"
-            lineHeight={1.6}
-            whiteSpace="pre-wrap"
-          >
-            {displayContent || 'コンテンツがありません'}
-          </Text>
-        )}
-      </Box>
-    </Box>
-  )
-}
+import FilePreview from '@/components/shared/FilePreview'
 
 export default function NoteListSection() {
   const router = useRouter()
@@ -636,10 +474,13 @@ export default function NoteListSection() {
                                   )}
 
                                   {/* コンテンツ */}
-                                  <FileContentDisplay note={note} 
+                                  <FilePreview 
+                                    note={note} 
                                     fetchFileContent={fetchFileContent}
                                     loadingFileContent={loadingFileContent}
                                     handleDownloadFile={handleDownloadFile}
+                                    maxHeight="400px"
+                                    showFileName={false}
                                   />
 
                                   {/* ファイル情報 */}
