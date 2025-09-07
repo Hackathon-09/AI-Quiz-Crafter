@@ -18,12 +18,10 @@ import {
   RadioGroup,
   Portal,
   Badge,
-  Textarea,
 } from '@chakra-ui/react'
 import { useState } from 'react'
 import {
   FaFileAlt,
-  FaEdit,
   FaTrash,
   FaSearch,
   FaCalendarAlt,
@@ -43,11 +41,6 @@ interface FileContentDisplayProps {
   fetchFileContent: (note: Note) => Promise<string>
   loadingFileContent: { [key: string]: boolean }
   handleDownloadFile: (note: Note) => Promise<void>
-  isEditing?: boolean
-  editingContent?: string
-  setEditingContent?: (content: string) => void
-  editingNotionUrl?: string
-  setEditingNotionUrl?: (url: string) => void
 }
 
 function FileContentDisplay({
@@ -55,11 +48,6 @@ function FileContentDisplay({
   fetchFileContent,
   loadingFileContent,
   handleDownloadFile,
-  isEditing = false,
-  editingContent = '',
-  setEditingContent,
-  editingNotionUrl = '',
-  setEditingNotionUrl,
 }: FileContentDisplayProps) {
   const [displayContent, setDisplayContent] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
@@ -224,56 +212,9 @@ function FileContentDisplay({
             </Text>
           </VStack>
         ) : (
-          <>
-            {/* Notionノートの編集 */}
-            {note.sourceType === 'notion' && isEditing ? (
-              <VStack align="stretch" gap={3}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2}>
-                    NotionURL
-                  </Text>
-                  <Input
-                    value={editingNotionUrl}
-                    onChange={(e) => setEditingNotionUrl?.(e.target.value)}
-                    placeholder="https://notion.so/..."
-                    border="2px"
-                    borderColor="blue.300"
-                  />
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2}>
-                    メモ
-                  </Text>
-                  <Textarea
-                    value={editingContent}
-                    onChange={(e) => setEditingContent?.(e.target.value)}
-                    placeholder="Notionページに関するメモを入力..."
-                    minH="200px"
-                    border="2px"
-                    borderColor="blue.300"
-                    resize="vertical"
-                  />
-                </Box>
-              </VStack>
-            ) : /* テキストノートの編集 */ isEditing &&
-              note.sourceType === 'text' ? (
-              <Textarea
-                value={editingContent}
-                onChange={(e) => setEditingContent?.(e.target.value)}
-                placeholder="ノート内容を入力..."
-                minH="300px"
-                border="2px"
-                borderColor="blue.300"
-                resize="vertical"
-                fontSize="sm"
-                lineHeight={1.6}
-              />
-            ) : (
-              <Text fontSize="sm" lineHeight={1.6} whiteSpace="pre-wrap">
-                {displayContent || 'コンテンツがありません'}
-              </Text>
-            )}
-          </>
+          <Text fontSize="sm" lineHeight={1.6} whiteSpace="pre-wrap">
+            {displayContent || 'コンテンツがありません'}
+          </Text>
         )}
       </Box>
     </Box>
@@ -293,11 +234,6 @@ export default function NotesPage() {
   const [loadingFileContent, setLoadingFileContent] = useState<{
     [key: string]: boolean
   }>({})
-  const [isEditing, setIsEditing] = useState(false)
-  const [editingTitle, setEditingTitle] = useState('')
-  const [editingContent, setEditingContent] = useState('')
-  const [editingNotionUrl, setEditingNotionUrl] = useState('')
-  const [isUpdating, setIsUpdating] = useState(false)
 
   // API呼び出し関数
   const fetchAllNotes = async () => {
@@ -557,113 +493,6 @@ export default function NotesPage() {
     }
   }
 
-  // 編集を開始する関数
-  const startEditing = (note: Note) => {
-    if (note.sourceType === 'file') {
-      alert('ファイルノートは編集できません')
-      return
-    }
-
-    setIsEditing(true)
-    setEditingTitle(note.title)
-    setEditingContent(note.content || '')
-    setEditingNotionUrl(note.notionUrl || '')
-  }
-
-  // 編集をキャンセルする関数
-  const cancelEditing = () => {
-    setIsEditing(false)
-    setEditingTitle('')
-    setEditingContent('')
-    setEditingNotionUrl('')
-  }
-
-  // ノートを更新する関数
-  const updateNote = async () => {
-    if (!selectedNote) return
-
-    try {
-      setIsUpdating(true)
-
-      const session = await fetchAuthSession()
-      const idToken = session.tokens?.idToken?.toString()
-
-      if (!idToken) {
-        alert('認証が必要です')
-        return
-      }
-
-      const updateData: {
-        noteId: string
-        title: string
-        content?: string
-        notionUrl?: string
-      } = {
-        noteId: selectedNote.noteId || selectedNote.id,
-        title: editingTitle,
-      }
-
-      if (selectedNote.sourceType === 'text') {
-        updateData.content = editingContent
-      } else if (selectedNote.sourceType === 'notion') {
-        updateData.notionUrl = editingNotionUrl
-      }
-
-      console.log('Updating note:', updateData)
-
-      const response = await fetch(
-        'https://8hpurwn5q9.execute-api.ap-northeast-1.amazonaws.com/v1/notes',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${idToken}`,
-          },
-          body: JSON.stringify(updateData),
-        }
-      )
-
-      if (response.ok) {
-        console.log('Note updated successfully')
-
-        // ローカル状態を更新
-        const updatedNote = { ...selectedNote }
-        updatedNote.title = editingTitle
-        if (selectedNote.sourceType === 'text') {
-          updatedNote.content = editingContent
-        } else if (selectedNote.sourceType === 'notion') {
-          updatedNote.notionUrl = editingNotionUrl
-        }
-
-        setNotes((prevNotes) =>
-          prevNotes.map((note) =>
-            (note.noteId || note.id) ===
-            (selectedNote.noteId || selectedNote.id)
-              ? updatedNote
-              : note
-          )
-        )
-        setSelectedNote(updatedNote)
-
-        // 編集モードを終了
-        setIsEditing(false)
-        setEditingTitle('')
-        setEditingContent('')
-        setEditingNotionUrl('')
-
-        alert('ノートが更新されました')
-      } else {
-        const errorText = await response.text()
-        console.error('Failed to update note:', response.status, errorText)
-        alert('ノートの更新に失敗しました')
-      }
-    } catch (error) {
-      console.error('Error updating note:', error)
-      alert('更新中にエラーが発生しました')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
 
   // コンポーネントマウント時にノートを取得
   useEffect(() => {
@@ -942,36 +771,52 @@ export default function NotesPage() {
                           : 'gray.200'
                       }
                     >
-                      <VStack align="start" gap={2} flex={1}>
-                        <Text fontSize="md" fontWeight="bold" truncate>
-                          {note.title}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600" lineClamp={2}>
-                          {(() => {
-                            if (
-                              note.content === undefined ||
-                              note.content === null
-                            ) {
-                              return 'コンテンツなし'
-                            }
-                            return note.content.length > 150
-                              ? `${note.content.substring(0, 150)}...`
-                              : note.content
-                          })()}
-                        </Text>
-                        <Text fontSize="xs" color="gray.400">
-                          {new Date(note.createdAt).toLocaleDateString(
-                            'ja-JP',
-                            {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            }
-                          )}
-                        </Text>
-                      </VStack>
+                      <HStack justify="space-between">
+                        <VStack align="start" gap={2} flex={1}>
+                          <Text fontSize="md" fontWeight="bold" truncate>
+                            {note.title}
+                          </Text>
+                          <Text fontSize="sm" color="gray.600" lineClamp={2}>
+                            {(() => {
+                              if (
+                                note.content === undefined ||
+                                note.content === null
+                              ) {
+                                return 'コンテンツなし'
+                              }
+                              return note.content.length > 150
+                                ? `${note.content.substring(0, 150)}...`
+                                : note.content
+                            })()}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            {new Date(note.createdAt).toLocaleDateString(
+                              'ja-JP',
+                              {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              }
+                            )}
+                          </Text>
+                        </VStack>
+                        
+                        <VStack gap={1}>
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="red"
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              await handleDeleteNote(note.noteId || note.id)
+                            }}
+                          >
+                            <FaTrash size={12} />
+                          </IconButton>
+                        </VStack>
+                      </HStack>
                     </Card.Root>
                   ))
                 )}
@@ -986,22 +831,9 @@ export default function NotesPage() {
             {selectedNote ? (
               <VStack gap={4} align="stretch" h="full">
                 <Box>
-                  {isEditing ? (
-                    <Input
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      fontSize="lg"
-                      fontWeight="bold"
-                      border="2px"
-                      borderColor="blue.300"
-                      mb={3}
-                      placeholder="ノートのタイトル"
-                    />
-                  ) : (
-                    <Heading size="lg" mb={3}>
-                      {selectedNote.title}
-                    </Heading>
-                  )}
+                  <Heading size="lg" mb={3}>
+                    {selectedNote.title}
+                  </Heading>
                   <Text fontSize="sm" color="gray.500" mb={4}>
                     作成日:{' '}
                     {new Date(selectedNote.createdAt).toLocaleDateString(
@@ -1099,62 +931,9 @@ export default function NotesPage() {
                     fetchFileContent={fetchFileContent}
                     loadingFileContent={loadingFileContent}
                     handleDownloadFile={handleDownloadFile}
-                    isEditing={isEditing}
-                    editingContent={editingContent}
-                    setEditingContent={setEditingContent}
-                    editingNotionUrl={editingNotionUrl}
-                    setEditingNotionUrl={setEditingNotionUrl}
                   />
                 </Box>
 
-                <HStack gap={2}>
-                  {isEditing ? (
-                    <>
-                      <Button
-                        colorScheme="blue"
-                        onClick={updateNote}
-                        flex={1}
-                        loading={isUpdating}
-                        disabled={!editingTitle.trim()}
-                      >
-                        保存
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={cancelEditing}
-                        flex={1}
-                        disabled={isUpdating}
-                      >
-                        キャンセル
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        colorScheme="blue"
-                        onClick={() => startEditing(selectedNote)}
-                        flex={1}
-                        disabled={selectedNote.sourceType === 'file'}
-                      >
-                        <FaEdit />
-                        編集
-                      </Button>
-                      <Button
-                        colorScheme="red"
-                        variant="outline"
-                        onClick={() => {
-                          handleDeleteNote(
-                            selectedNote.noteId || selectedNote.id
-                          )
-                        }}
-                        flex={1}
-                      >
-                        <FaTrash />
-                        削除
-                      </Button>
-                    </>
-                  )}
-                </HStack>
               </VStack>
             ) : (
               <VStack gap={4} justify="center" h="full" textAlign="center">
