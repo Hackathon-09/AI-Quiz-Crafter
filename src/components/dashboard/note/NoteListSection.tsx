@@ -392,7 +392,7 @@ export default function NoteListSection() {
                 >
                   <HStack justify="space-between">
                     <VStack align="start" gap={1} flex={1} minW={0}>
-                      <Text fontSize="sm" fontWeight="medium" noOfLines={1} wordBreak="break-word">
+                      <Text fontSize="sm" fontWeight="medium" lineClamp={1} wordBreak="break-word">
                         {note.title}
                       </Text>
                       <Text fontSize="xs" color="gray.600" lineClamp={2} wordBreak="break-word">
