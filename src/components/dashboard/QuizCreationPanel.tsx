@@ -54,6 +54,7 @@ export default function QuizCreationPanel() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [tagFilterType, setTagFilterType] = useState<'or' | 'and'>('and')
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false)
 
   // API呼び出し関数
   const fetchNotes = async () => {
@@ -289,17 +290,138 @@ export default function QuizCreationPanel() {
       return sortOrder === 'desc' ? -comparison : comparison
     })
 
-  const handleGenerateQuiz = () => {
-    const settings: QuizSettings = {
-      questionCount,
-      questionType,
-      difficulty,
-      selectedNotes: selectedNotes,
+  const handleGenerateQuiz = async () => {
+    if (selectedNotes.length === 0) {
+      alert('ノートを選択してください。')
+      return
     }
 
-    // 設定をsessionStorageに保存（URLが長くならない）
-    sessionStorage.setItem('quizSettings', JSON.stringify(settings))
-    router.push('/quiz/execution')
+    setIsGeneratingQuiz(true)
+    
+    try {
+      // 認証セッションを取得
+      const session = await fetchAuthSession()
+      const idToken = session.tokens?.idToken?.toString()
+      
+      if (!idToken) {
+        alert('認証が必要です。ログインしてください。')
+        return
+      }
+
+      console.log('認証トークン取得成功:', idToken.substring(0, 50) + '...')
+      console.log('選択されたノート:', selectedNotes)
+
+      // 選択されたノートの内容を取得
+      const selectedNoteContents: string[] = []
+      for (const noteId of selectedNotes) {
+        const note = notes.find(n => (n.noteId || n.id) === noteId)
+        if (!note) continue
+
+        let content = ''
+        if (note.sourceType === 'text' || note.sourceType === 'notion') {
+          content = note.content || ''
+        } else if (note.sourceType === 'file') {
+          content = await fetchFileContent(note)
+        }
+        
+        if (content) {
+          selectedNoteContents.push(`【${note.title}】\n${content}`)
+        }
+      }
+
+      if (selectedNoteContents.length === 0) {
+        alert('選択されたノートから内容を取得できませんでした。')
+        return
+      }
+
+      // ノート内容を結合
+      const combinedContent = selectedNoteContents.join('\n\n---\n\n')
+
+      // 問題形式をLambda関数の期待形式に変換
+      const formatMapping: { [key: string]: string } = {
+        'multiple-choice': '選択式',
+        'essay': '記述式',
+        'true-false': '正誤判定'
+      }
+
+      // 難易度をLambda関数の期待形式に変換
+      const difficultyMapping: { [key: string]: string } = {
+        'basic': '基礎',
+        'standard': '標準',
+        'advanced': '応用'
+      }
+
+      console.log('API呼び出し開始:', {
+        url: 'https://m8qv314ft6.execute-api.ap-northeast-1.amazonaws.com/dev/',
+        noteIds: selectedNotes,
+        contentLength: combinedContent.length
+      })
+
+      // make_quiz APIを呼び出し
+      const response = await fetch(
+        'https://m8qv314ft6.execute-api.ap-northeast-1.amazonaws.com/dev/',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': idToken,
+          },
+          body: JSON.stringify({
+            note: combinedContent,
+            noteId: selectedNotes.join(','), // 複数ノートIDを結合
+            num_questions: parseInt(questionCount),
+            difficulty: difficultyMapping[difficulty] || '標準',
+            question_format: formatMapping[questionType] || '選択式'
+          })
+        }
+      )
+
+      console.log('API レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('クイズ生成成功:', result)
+        console.log('result.quizzies:', result.quizzies)
+        
+        // APIレスポンスの構造確認
+        if (!result.quizzies || !Array.isArray(result.quizzies)) {
+          console.error('Invalid API response structure:', result)
+          alert('サーバーから無効なレスポンスが返されました。')
+          return
+        }
+        
+        // 生成されたクイズをsessionStorageに保存
+        const quizData = {
+          settings: {
+            questionCount,
+            questionType,
+            difficulty,
+            selectedNotes: selectedNotes,
+          },
+          questions: result.quizzies,
+          generatedAt: new Date().toISOString()
+        }
+        
+        sessionStorage.setItem('generatedQuiz', JSON.stringify(quizData))
+        
+        // 実行ページに遷移
+        router.push('/quiz/execution')
+      } else {
+        const errorData = await response.json()
+        console.error('クイズ生成エラー:', errorData)
+        alert(`クイズ生成に失敗しました: ${errorData.error || 'Unknown error'}`)
+      }
+      
+    } catch (error) {
+      console.error('クイズ生成中にエラーが発生しました:', error)
+      alert('クイズ生成中にエラーが発生しました。しばらく時間をおいて再試行してください。')
+    } finally {
+      setIsGeneratingQuiz(false)
+    }
   }
 
   return (
@@ -752,10 +874,14 @@ export default function QuizCreationPanel() {
           colorScheme="blue"
           size="lg"
           onClick={handleGenerateQuiz}
-          disabled={selectedNotes.length === 0}
+          disabled={selectedNotes.length === 0 || isGeneratingQuiz}
+          loading={isGeneratingQuiz}
           w="full"
         >
-          選択したノートからクイズを生成する ({selectedNotes.length}個のノート)
+          {isGeneratingQuiz 
+            ? `AI問題生成中... (${selectedNotes.length}個のノート)`
+            : `選択したノートからクイズを生成する (${selectedNotes.length}個のノート)`
+          }
         </Button>
       </VStack>
     </Box>
