@@ -1,6 +1,7 @@
 'use client'
 
 import { Providers } from './providers'
+import { VercelAnalytics } from '@/components/common/Analytics'
 
 export default function RootLayout({
   children,
@@ -19,6 +20,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning={true}>
         <Providers>{children}</Providers>
+        <VercelAnalytics />
       </body>
     </html>
   )
